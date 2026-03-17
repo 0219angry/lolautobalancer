@@ -89,11 +89,28 @@ export async function getRankByPuuid(
 }
 
 // PUUID → 直近マッチIDリスト取得
-export async function getMatchIds(puuid: string, count = 5): Promise<string[]> {
-  const url = `${ASIA_HOST}/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=0&count=${count}&queue=420`;
-  const res = await riotFetch(url);
-  if (!res.ok) throw toRiotError(res.status, "マッチIDリスト");
-  return res.json();
+// ソロランク(420)を優先し、不足分はフレックス(440)で補完する
+export async function getMatchIds(puuid: string, count = 10): Promise<string[]> {
+  const base = `${ASIA_HOST}/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=0&count=${count}`;
+
+  const soloRes = await riotFetch(`${base}&queue=420`);
+  if (!soloRes.ok) throw toRiotError(soloRes.status, "マッチIDリスト");
+  const soloIds: string[] = await soloRes.json();
+
+  if (soloIds.length >= count) return soloIds;
+
+  // ソロランクが不足している場合はフレックスで補完
+  const flexRes = await riotFetch(`${base}&queue=440`);
+  if (!flexRes.ok) return soloIds; // フレックス取得失敗時はソロのみで続行
+  const flexIds: string[] = await flexRes.json();
+
+  // 重複を除いて count 件になるまで補完
+  const combined = [...soloIds];
+  for (const id of flexIds) {
+    if (combined.length >= count) break;
+    if (!combined.includes(id)) combined.push(id);
+  }
+  return combined;
 }
 
 // マッチID → マッチ詳細取得
