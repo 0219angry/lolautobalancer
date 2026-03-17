@@ -48,10 +48,10 @@ export default function RoleAssignPanel({ team, teamColor, onRoleChange }: Props
             </select>
 
             {/* プレイヤー名 */}
-            <span className="text-ink text-sm flex-1 truncate">{player.summonerName}</span>
+            <span className="text-ink text-sm font-semibold flex-1 truncate">{player.summonerName}</span>
 
             {/* ティア */}
-            <span className="font-mono text-sm text-ink-dim flex-shrink-0">
+            <span className="font-mono text-sm font-medium text-ink-dim flex-shrink-0">
               {player.tier.slice(0, 2)} {player.rank}
             </span>
 

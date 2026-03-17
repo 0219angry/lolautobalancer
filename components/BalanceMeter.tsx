@@ -22,7 +22,7 @@ export default function BalanceMeter({ blueScore, redScore, scoreDiff }: Props) 
       <div className="flex justify-between items-end mb-3">
         <div>
           <p className="font-mono text-sm text-azure uppercase tracking-widest mb-0.5">Blue</p>
-          <p className="font-mono text-2xl font-bold text-azure">{blueScore}</p>
+          <p className="font-mono text-3xl font-bold text-azure">{blueScore}</p>
         </div>
         <div className="text-center">
           <p className={`font-mono text-sm uppercase tracking-widest ${balanceColor}`}>{balanceLabel}</p>
@@ -30,12 +30,12 @@ export default function BalanceMeter({ blueScore, redScore, scoreDiff }: Props) 
         </div>
         <div className="text-right">
           <p className="font-mono text-sm text-crimson uppercase tracking-widest mb-0.5">Red</p>
-          <p className="font-mono text-2xl font-bold text-crimson">{redScore}</p>
+          <p className="font-mono text-3xl font-bold text-crimson">{redScore}</p>
         </div>
       </div>
 
       {/* バー */}
-      <div className="flex h-1.5 bg-raised">
+      <div className="flex h-2 bg-raised">
         <div
           className="bg-azure transition-all duration-700"
           style={{ width: `${bluePercent}%` }}

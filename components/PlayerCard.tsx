@@ -150,7 +150,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
           onBlur={() => riotId && !playerData && fetchPlayer()}
           placeholder="PlayerName#JP1"
           disabled={loading}
-          className="flex-1 bg-transparent text-ink text-sm font-mono placeholder-ink-muted focus:outline-none min-w-0"
+          className="flex-1 bg-transparent text-ink text-sm font-mono font-medium placeholder-ink-muted focus:outline-none min-w-0"
         />
         {playerData ? (
           <button
@@ -244,7 +244,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
               {playerData.tier} {playerData.rank}
             </span>
             <span className="font-mono text-sm text-ink-dim">{playerData.lp}LP</span>
-            <span className="text-sm text-ink-dim ml-auto truncate">{playerData.summonerName}</span>
+            <span className="text-sm font-semibold text-ink ml-auto truncate">{playerData.summonerName}</span>
           </div>
 
           {/* 希望ロール */}
