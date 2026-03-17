@@ -1,4 +1,5 @@
 import type { PlayerData, Role, RoleStats, ContributionScore, Tier } from "@/types";
+import { getCachedPlayer, setCachedPlayer } from "./playerCache";
 
 function generateAutoTags(
   tier: Tier,
@@ -30,7 +31,13 @@ function generateAutoTags(
   return tags;
 }
 
-export async function fetchPlayerData(riotId: string, index: number): Promise<PlayerData> {
+export async function fetchPlayerData(riotId: string, index: number, skipCache = false): Promise<PlayerData> {
+  // キャッシュ確認（1時間以内のデータはAPIを呼ばない）
+  if (!skipCache) {
+    const cached = getCachedPlayer(riotId);
+    if (cached) return { ...cached, id: `player-${index}` };
+  }
+
   const parts = riotId.trim().split("#");
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
     throw new Error("Riot ID は「名前#タグ」形式で入力してください");
@@ -65,7 +72,7 @@ export async function fetchPlayerData(riotId: string, index: number): Promise<Pl
 
   const autoTags = generateAutoTags(sumData.tier, preferredRoles, roleStats, contributionScore);
 
-  return {
+  const data: PlayerData = {
     id: `player-${index}`,
     riotId: riotId.trim(),
     puuid: sumData.puuid,
@@ -79,4 +86,7 @@ export async function fetchPlayerData(riotId: string, index: number): Promise<Pl
     mood: 1,
     autoTags,
   };
+
+  setCachedPlayer(riotId, data);
+  return data;
 }

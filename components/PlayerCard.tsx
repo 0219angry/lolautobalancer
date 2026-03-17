@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { PlayerInput, PlayerData, Mood, Role, Tier } from "@/types";
 import { fetchPlayerData } from "@/lib/fetchPlayer";
+import { getCacheAgeMin } from "@/lib/playerCache";
 
 const ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
 const ROLE_SHORT: Record<Role, string> = {
@@ -48,7 +49,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
     setManualMode(false);
   }, [preloadedData]);
 
-  async function fetchPlayer() {
+  async function fetchPlayer(skipCache = false) {
     if (!riotId.trim().includes("#")) {
       setError("Riot ID は「名前#タグ」形式で入力してください");
       return;
@@ -56,7 +57,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchPlayerData(riotId, index);
+      const data = await fetchPlayerData(riotId, index, skipCache);
       const hasPreferred = preferredRoles.filter(Boolean).length > 0;
       if (hasPreferred) {
         data.preferredRoles = preferredRoles.filter(Boolean) as Role[];
@@ -64,7 +65,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
         setPreferredRoles([data.preferredRoles[0] ?? null, data.preferredRoles[1] ?? null]);
       }
       data.mood = mood;
-      setPlayerData(data);
+      setPlayerData({ ...data });
       onDataChange(index, data);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "取得失敗";
@@ -154,15 +155,30 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
           className="flex-1 bg-transparent text-ink text-sm font-mono font-medium placeholder-ink-muted focus:outline-none min-w-0"
         />
         {playerData ? (
-          <button
-            onClick={clearPlayer}
-            className="text-ink-muted text-sm hover:text-crimson transition-colors flex-shrink-0"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {(() => {
+              const age = getCacheAgeMin(riotId);
+              return age !== null ? (
+                <span className="font-mono text-xs text-ink-muted">{age}分前</span>
+              ) : null;
+            })()}
+            <button
+              onClick={() => { setPlayerData(null); fetchPlayer(true); }}
+              title="再取得"
+              className="font-mono text-xs text-ink-muted hover:text-gold transition-colors"
+            >
+              ↺
+            </button>
+            <button
+              onClick={clearPlayer}
+              className="text-ink-muted text-sm hover:text-crimson transition-colors"
+            >
+              ✕
+            </button>
+          </div>
         ) : (
           <button
-            onClick={fetchPlayer}
+            onClick={() => fetchPlayer()}
             disabled={loading || !riotId}
             className="border border-wire text-ink-dim text-sm px-3 py-1 hover:border-wire-bright hover:text-ink disabled:opacity-30 transition-colors flex-shrink-0"
           >
