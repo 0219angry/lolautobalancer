@@ -1,4 +1,34 @@
-import type { PlayerData, Role } from "@/types";
+import type { PlayerData, Role, RoleStats, ContributionScore, Tier } from "@/types";
+
+function generateAutoTags(
+  tier: Tier,
+  preferredRoles: Role[],
+  roleStats: RoleStats,
+  cs: ContributionScore
+): string[] {
+  const tags: string[] = [];
+
+  // ランク帯
+  if (tier === "MASTER" || tier === "GRANDMASTER" || tier === "CHALLENGER") {
+    tags.push("ハイランク");
+  }
+
+  // 貢献度系
+  if (cs.visionScore > 40) tags.push("ビジョン型");
+  if (cs.teamFightParticipation > 0.65) tags.push("集団戦型");
+  if (cs.raw >= 70) tags.push("高貢献");
+
+  // 得意ロールのスタッツ
+  const prefRole = preferredRoles[0];
+  if (prefRole && roleStats[prefRole]) {
+    const s = roleStats[prefRole];
+    if (s.winRate >= 0.6 && s.games >= 5) tags.push("安定型");
+    if (s.avgKDA >= 4) tags.push("高KDA");
+    if (s.avgCSperMin >= 7) tags.push("CS型");
+  }
+
+  return tags;
+}
 
 export async function fetchPlayerData(riotId: string, index: number): Promise<PlayerData> {
   const parts = riotId.trim().split("#");
@@ -26,6 +56,8 @@ export async function fetchPlayerData(riotId: string, index: number): Promise<Pl
     contributionScore = matchData.contributionScore;
   }
 
+  const autoTags = generateAutoTags(sumData.tier, preferredRoles, roleStats, contributionScore);
+
   return {
     id: `player-${index}`,
     riotId: riotId.trim(),
@@ -38,5 +70,7 @@ export async function fetchPlayerData(riotId: string, index: number): Promise<Pl
     roleStats,
     contributionScore,
     mood: 1,
+    autoTags,
+    tags: [],
   };
 }
