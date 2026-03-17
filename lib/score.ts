@@ -17,7 +17,7 @@ const TIER_BASE: Record<Tier, number> = {
 // 上位ティア判定
 const HIGH_TIER: Tier[] = ["MASTER", "GRANDMASTER", "CHALLENGER"];
 
-// ロール別スコアの重み
+// ロール別スコアのデフォルト重み（TOP / MID / BOT）
 const WIN_RATE_WEIGHT = 40;
 const KDA_WEIGHT = 30;
 const CS_WEIGHT = 20;
@@ -25,8 +25,25 @@ const RELIABILITY_WEIGHT = 10;
 
 // ロール別スコア計算の正規化係数
 const KDA_NORMALIZATION_FACTOR = 5;
-const CS_PER_MIN_NORMALIZATION_FACTOR = 10;
+const CS_PER_MIN_NORMALIZATION_FACTOR = 7; // 実態に合わせて 10 → 7 に調整
 const RELIABILITY_GAMES_CAP = 20;
+
+// ロール固有の重み（合計が 100 になるよう設定）
+const ROLE_SPECIFIC_WEIGHTS: Partial<Record<string, { winRate: number; kda: number; cs: number; reliability: number }>> = {
+  // JUNGLE: CS は少ないためウェイトを下げ、KDA を重視
+  JUNGLE: { winRate: 40, kda: 35, cs: 15, reliability: 10 },
+  // SUPPORT: CS スコアはほぼゼロなため除外し、勝率・KDA・信頼性を重視
+  SUPPORT: { winRate: 45, kda: 35, cs: 0, reliability: 20 },
+};
+
+function getRoleWeights(role: string) {
+  return ROLE_SPECIFIC_WEIGHTS[role] ?? {
+    winRate: WIN_RATE_WEIGHT,
+    kda: KDA_WEIGHT,
+    cs: CS_WEIGHT,
+    reliability: RELIABILITY_WEIGHT,
+  };
+}
 
 // 総合スコアの重み
 const SCORE_WEIGHTS = {
@@ -57,20 +74,21 @@ export function calcRoleScore(
     return rankScore * 0.8;
   }
 
-  const winRatePart = stats.winRate * WIN_RATE_WEIGHT;
-  const kdaPart = Math.min(stats.avgKDA / KDA_NORMALIZATION_FACTOR, 1) * KDA_WEIGHT;
-  const csPart = Math.min(stats.avgCSperMin / CS_PER_MIN_NORMALIZATION_FACTOR, 1) * CS_WEIGHT;
-  const reliabilityPart = (Math.log(stats.games + 1) / Math.log(RELIABILITY_GAMES_CAP + 1)) * RELIABILITY_WEIGHT;
+  const w = getRoleWeights(role);
+  const winRatePart = stats.winRate * w.winRate;
+  const kdaPart = Math.min(stats.avgKDA / KDA_NORMALIZATION_FACTOR, 1) * w.kda;
+  const csPart = Math.min(stats.avgCSperMin / CS_PER_MIN_NORMALIZATION_FACTOR, 1) * w.cs;
+  const reliabilityPart = (Math.log(stats.games + 1) / Math.log(RELIABILITY_GAMES_CAP + 1)) * w.reliability;
 
   return winRatePart + kdaPart + csPart + reliabilityPart;
 }
 
-// ムード補正係数
+// ムード補正係数（バランスへの過剰影響を抑えるため 0.85〜1.15 に縮小）
 const MOOD_MULTIPLIER: Record<Mood, number> = {
-  0: 0.75,
+  0: 0.85,
   1: 1.0,
-  2: 1.15,
-  3: 1.3,
+  2: 1.08,
+  3: 1.15,
 };
 
 // プレイヤー総合スコア計算
