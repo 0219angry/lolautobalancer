@@ -23,6 +23,11 @@ const KDA_WEIGHT = 30;
 const CS_WEIGHT = 20;
 const RELIABILITY_WEIGHT = 10;
 
+// ロール別スコア計算の正規化係数
+const KDA_NORMALIZATION_FACTOR = 5;
+const CS_PER_MIN_NORMALIZATION_FACTOR = 10;
+const RELIABILITY_GAMES_CAP = 20;
+
 // 総合スコアの重み
 const SCORE_WEIGHTS = {
   RANK: 0.4,
@@ -53,9 +58,9 @@ export function calcRoleScore(
   }
 
   const winRatePart = stats.winRate * WIN_RATE_WEIGHT;
-  const kdaPart = Math.min(stats.avgKDA / 5, 1) * KDA_WEIGHT;
-  const csPart = Math.min(stats.avgCSperMin / 10, 1) * CS_WEIGHT;
-  const reliabilityPart = (Math.log(stats.games + 1) / Math.log(21)) * RELIABILITY_WEIGHT;
+  const kdaPart = Math.min(stats.avgKDA / KDA_NORMALIZATION_FACTOR, 1) * KDA_WEIGHT;
+  const csPart = Math.min(stats.avgCSperMin / CS_PER_MIN_NORMALIZATION_FACTOR, 1) * CS_WEIGHT;
+  const reliabilityPart = (Math.log(stats.games + 1) / Math.log(RELIABILITY_GAMES_CAP + 1)) * RELIABILITY_WEIGHT;
 
   return winRatePart + kdaPart + csPart + reliabilityPart;
 }
