@@ -37,27 +37,6 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
   const [manualLp, setManualLp] = useState(0);
   const [manualContrib, setManualContrib] = useState(50);
 
-  // タグ管理
-  const [tagInput, setTagInput] = useState("");
-
-  const PRESET_TAGS = ["オフロール", "初心者", "スマーフ疑", "コール上手", "キャリー型", "サポート型", "集中型", "回線不安定"];
-
-  function addTag(tag: string) {
-    const t = tag.trim();
-    if (!t || !playerData) return;
-    if ((playerData.tags ?? []).includes(t)) return;
-    const updated = { ...playerData, tags: [...(playerData.tags ?? []), t] };
-    setPlayerData(updated);
-    onDataChange(index, updated);
-    setTagInput("");
-  }
-
-  function removeTag(tag: string) {
-    if (!playerData) return;
-    const updated = { ...playerData, tags: (playerData.tags ?? []).filter((t) => t !== tag) };
-    setPlayerData(updated);
-    onDataChange(index, updated);
-  }
 
   useEffect(() => {
     if (!preloadedData) return;
@@ -310,50 +289,16 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
             ))}
           </div>
 
-          {/* タグ */}
-          <div className="flex flex-col gap-1.5 pt-0.5 border-t border-wire">
-            {/* 表示中タグ */}
-            {((playerData.autoTags?.length ?? 0) > 0 || (playerData.tags?.length ?? 0) > 0) && (
-              <div className="flex flex-wrap gap-1">
-                {playerData.autoTags?.map((tag) => (
-                  <span key={tag} className="font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5">
-                    {tag}
-                  </span>
-                ))}
-                {playerData.tags?.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => removeTag(tag)}
-                    className="font-mono text-xs border border-wire-bright text-ink-dim px-1.5 py-0.5 hover:border-crimson hover:text-crimson transition-colors"
-                    title="クリックで削除"
-                  >
-                    {tag} ✕
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* タグ追加 */}
-            <div className="flex gap-1 flex-wrap items-center">
-              {PRESET_TAGS.filter((t) => !(playerData.tags ?? []).includes(t) && !(playerData.autoTags ?? []).includes(t)).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => addTag(t)}
-                  className="font-mono text-xs border border-wire text-ink-muted px-1.5 py-0.5 hover:border-wire-bright hover:text-ink transition-colors"
-                >
-                  + {t}
-                </button>
+          {/* 自動タグ */}
+          {(playerData.autoTags?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-1 pt-0.5 border-t border-wire">
+              {playerData.autoTags!.map((tag) => (
+                <span key={tag} className="font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5">
+                  {tag}
+                </span>
               ))}
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addTag(tagInput)}
-                placeholder="カスタム…"
-                className="bg-transparent border-b border-wire text-ink text-xs font-mono w-20 placeholder-ink-muted focus:outline-none focus:border-wire-bright"
-              />
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

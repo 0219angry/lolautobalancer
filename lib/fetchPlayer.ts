@@ -71,6 +71,5 @@ export async function fetchPlayerData(riotId: string, index: number): Promise<Pl
     contributionScore,
     mood: 1,
     autoTags,
-    tags: [],
   };
 }

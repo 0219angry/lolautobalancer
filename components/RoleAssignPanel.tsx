@@ -47,15 +47,11 @@ export default function RoleAssignPanel({ team, teamColor, onRoleChange }: Props
               ))}
             </select>
 
-            {/* プレイヤー名 + タグ */}
+            {/* プレイヤー名 + 自動タグ */}
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
               <span className="text-ink text-sm font-semibold truncate">{player.summonerName}</span>
-              {[...(player.autoTags ?? []), ...(player.tags ?? [])].slice(0, 3).map((tag) => (
-                <span key={tag} className={`font-mono text-xs px-1 py-0 border flex-shrink-0 hidden sm:inline ${
-                  (player.autoTags ?? []).includes(tag)
-                    ? "border-gold/40 text-gold/80"
-                    : "border-wire text-ink-muted"
-                }`}>
+              {(player.autoTags ?? []).slice(0, 2).map((tag) => (
+                <span key={tag} className="font-mono text-xs px-1 border border-gold/40 text-gold/80 flex-shrink-0 hidden sm:inline">
                   {tag}
                 </span>
               ))}

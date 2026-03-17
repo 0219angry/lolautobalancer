@@ -58,7 +58,6 @@ export interface PlayerData {
   mood: Mood;
   assignedRole?: Role; // チーム分け後に確定したロール（結果画面で上書き可）
   autoTags?: string[]; // matchデータから自動生成されたタグ
-  tags?: string[];     // ユーザーが手動で追加したタグ
 }
 
 // チーム分けリクエスト
