@@ -88,18 +88,18 @@ export default function Home() {
     const results: (PlayerData | null)[] = Array(PLAYER_COUNT).fill(null);
     const errors: string[] = [];
 
-    await Promise.all(
-      parsedIds.slice(0, PLAYER_COUNT).map(async (id, i) => {
-        try {
-          const data = await fetchPlayerData(id, i);
-          results[i] = data;
-        } catch (e) {
-          errors.push(`${id}: ${e instanceof Error ? e.message : "取得失敗"}`);
-          results[i] = null;
-        }
-        setBulkProgress((prev) => ({ done: (prev?.done ?? 0) + 1, total: parsedIds.length }));
-      })
-    );
+    // 逐次実行でRiot APIレート制限を回避
+    for (let i = 0; i < parsedIds.slice(0, PLAYER_COUNT).length; i++) {
+      const id = parsedIds[i];
+      try {
+        const data = await fetchPlayerData(id, i);
+        results[i] = data;
+      } catch (e) {
+        errors.push(`${id}: ${e instanceof Error ? e.message : "取得失敗"}`);
+        results[i] = null;
+      }
+      setBulkProgress({ done: i + 1, total: parsedIds.length });
+    }
 
     setPreloadedPlayers([...results]);
     setPlayers([...results]);

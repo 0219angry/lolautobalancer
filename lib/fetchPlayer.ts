@@ -44,16 +44,23 @@ export async function fetchPlayerData(riotId: string, index: number): Promise<Pl
   }
   const sumData = await sumRes.json();
 
-  const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(sumData.puuid)}`);
   let roleStats = {};
   let preferredRoles: Role[] = [];
   let contributionScore = { visionScore: 0, teamFightParticipation: 0, controlWardsBought: 0, raw: 50 };
 
-  if (matchRes.ok) {
-    const matchData = await matchRes.json();
-    roleStats = matchData.roleStats;
-    preferredRoles = matchData.preferredRoles as Role[];
-    contributionScore = matchData.contributionScore;
+  try {
+    const matchRes = await fetch(
+      `/api/matches?puuid=${encodeURIComponent(sumData.puuid)}`,
+      { signal: AbortSignal.timeout(15000) }
+    );
+    if (matchRes.ok) {
+      const matchData = await matchRes.json();
+      roleStats = matchData.roleStats;
+      preferredRoles = matchData.preferredRoles as Role[];
+      contributionScore = matchData.contributionScore;
+    }
+  } catch {
+    // タイムアウト・エラー時はデフォルト値を使用
   }
 
   const autoTags = generateAutoTags(sumData.tier, preferredRoles, roleStats, contributionScore);

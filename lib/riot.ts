@@ -86,7 +86,7 @@ export async function getRankByPuuid(
 }
 
 // PUUID → 直近マッチIDリスト取得
-export async function getMatchIds(puuid: string, count = 20): Promise<string[]> {
+export async function getMatchIds(puuid: string, count = 5): Promise<string[]> {
   const url = `${ASIA_HOST}/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=0&count=${count}&queue=420`;
   const res = await riotFetch(url);
   if (!res.ok) throw toRiotError(res.status, "マッチIDリスト");
@@ -104,7 +104,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
 // マッチ履歴からロール別スタッツと貢献度を算出
 export async function analyzeMatches(
   puuid: string,
-  count = 20
+  count = 5
 ): Promise<{
   roleStats: RoleStats;
   preferredRoles: string[];
