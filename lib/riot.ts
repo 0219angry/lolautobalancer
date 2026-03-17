@@ -1,15 +1,26 @@
 import type { Tier, RoleStats, ContributionScore } from "@/types";
 
-const RIOT_API_KEY = process.env.RIOT_API_KEY;
+const _rawApiKey = process.env.RIOT_API_KEY;
+if (!_rawApiKey) {
+  throw new Error("RIOT_API_KEY environment variable is not set. Please check your .env.local file.");
+}
+const RIOT_API_KEY: string = _rawApiKey;
 
 const ASIA_HOST = "https://asia.api.riotgames.com";
 const JP1_HOST = "https://jp1.api.riotgames.com";
+
+// 貢献度スコア計算の定数
+const VISION_SCORE_WEIGHT = 40;
+const TF_PARTICIPATION_WEIGHT = 40;
+const CONTROL_WARD_WEIGHT = 20;
+const MAX_AVG_VISION_SCORE = 60;
+const MAX_AVG_CONTROL_WARDS = 2;
 
 // Riot API へのリクエスト（リトライ付き）
 async function riotFetch(url: string, retries = 3): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     const res = await fetch(url, {
-      headers: { "X-Riot-Token": RIOT_API_KEY! },
+      headers: { "X-Riot-Token": RIOT_API_KEY },
       cache: "no-store",
     });
 
@@ -167,9 +178,9 @@ export async function analyzeMatches(
   const avgTFParticip = contributionGames > 0 ? totalTFParticip / contributionGames : 0;
   const avgControlWards = contributionGames > 0 ? totalControlWards / contributionGames : 0;
 
-  const visionNorm = Math.min(avgVision / 60, 1) * 40;
-  const tfParticipNorm = avgTFParticip * 40;
-  const cwNorm = Math.min(avgControlWards / 2, 1) * 20;
+  const visionNorm = Math.min(avgVision / MAX_AVG_VISION_SCORE, 1) * VISION_SCORE_WEIGHT;
+  const tfParticipNorm = avgTFParticip * TF_PARTICIPATION_WEIGHT;
+  const cwNorm = Math.min(avgControlWards / MAX_AVG_CONTROL_WARDS, 1) * CONTROL_WARD_WEIGHT;
 
   const contributionScore: ContributionScore = {
     visionScore: avgVision,

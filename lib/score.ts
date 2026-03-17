@@ -17,6 +17,19 @@ const TIER_BASE: Record<Tier, number> = {
 // 上位ティア判定
 const HIGH_TIER: Tier[] = ["MASTER", "GRANDMASTER", "CHALLENGER"];
 
+// ロール別スコアの重み
+const WIN_RATE_WEIGHT = 40;
+const KDA_WEIGHT = 30;
+const CS_WEIGHT = 20;
+const RELIABILITY_WEIGHT = 10;
+
+// 総合スコアの重み
+const SCORE_WEIGHTS = {
+  RANK: 0.4,
+  ROLE: 0.35,
+  CONTRIBUTION: 0.25,
+};
+
 // ランクスコア計算
 export function calcRankScore(tier: Tier, rank: string, lp: number): number {
   const base = TIER_BASE[tier];
@@ -39,10 +52,10 @@ export function calcRoleScore(
     return rankScore * 0.8;
   }
 
-  const winRatePart = stats.winRate * 40;
-  const kdaPart = Math.min(stats.avgKDA / 5, 1) * 30;
-  const csPart = Math.min(stats.avgCSperMin / 10, 1) * 20;
-  const reliabilityPart = (Math.log(stats.games + 1) / Math.log(21)) * 10;
+  const winRatePart = stats.winRate * WIN_RATE_WEIGHT;
+  const kdaPart = Math.min(stats.avgKDA / 5, 1) * KDA_WEIGHT;
+  const csPart = Math.min(stats.avgCSperMin / 10, 1) * CS_WEIGHT;
+  const reliabilityPart = (Math.log(stats.games + 1) / Math.log(21)) * RELIABILITY_WEIGHT;
 
   return winRatePart + kdaPart + csPart + reliabilityPart;
 }
@@ -79,5 +92,10 @@ export function calcTotalScore(player: PlayerData): number {
   const contribScore = player.contributionScore.raw;
   const moodMult = MOOD_MULTIPLIER[player.mood];
 
-  return (rankScore * 0.4 + effectiveRoleScore * 0.35 + contribScore * 0.25) * moodMult;
+  return (
+    (rankScore * SCORE_WEIGHTS.RANK +
+      effectiveRoleScore * SCORE_WEIGHTS.ROLE +
+      contribScore * SCORE_WEIGHTS.CONTRIBUTION) *
+    moodMult
+  );
 }
