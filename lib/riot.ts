@@ -21,11 +21,11 @@ const MAX_AVG_VISION_SCORE = 60;
 const MAX_AVG_CONTROL_WARDS = 2;
 
 // Riot API へのリクエスト（リトライ付き）
-async function riotFetch(url: string, retries = 2): Promise<Response> {
+async function riotFetch(url: string, retries = 2, cache: RequestCache = "no-store"): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     const res = await fetch(url, {
       headers: { "X-Riot-Token": RIOT_API_KEY },
-      cache: "no-store",
+      cache,
       signal: AbortSignal.timeout(8000), // 1リクエスト最大8秒
     });
 
@@ -96,21 +96,13 @@ export async function getMatchIds(puuid: string, count = 5): Promise<string[]> {
   return res.json();
 }
 
-// マッチ詳細キャッシュ（試合結果は不変なので TTL なしで永続キャッシュ）
-// サーバー再起動でクリアされるがセッション内の重複取得を防ぐ
-const matchDetailCache = new Map<string, MatchDetail>();
-
 // マッチID → マッチ詳細取得
+// 試合結果は不変なので force-cache で Next.js / Vercel のデータキャッシュに乗せる
 export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
-  const cached = matchDetailCache.get(matchId);
-  if (cached) return cached;
-
   const url = `${ASIA_HOST}/lol/match/v5/matches/${encodeURIComponent(matchId)}`;
-  const res = await riotFetch(url);
+  const res = await riotFetch(url, 2, "force-cache");
   if (!res.ok) throw toRiotError(res.status, `マッチ ${matchId}`);
-  const detail: MatchDetail = await res.json();
-  matchDetailCache.set(matchId, detail);
-  return detail;
+  return res.json();
 }
 
 // マッチ履歴からロール別スタッツと貢献度を算出
