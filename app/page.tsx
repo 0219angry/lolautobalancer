@@ -130,6 +130,7 @@ export default function Home() {
       }
       const data: BalanceResult = await res.json();
       setResult(data);
+      localStorage.setItem("balancer_result", JSON.stringify(data));
       window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
     } catch (e) {
       showToast(e instanceof Error ? e.message : "エラーが発生しました");
@@ -303,6 +304,12 @@ export default function Home() {
             <div className="flex items-center gap-3 mb-5">
               <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Result</span>
               <span className="flex-1 h-px bg-wire" />
+              <a
+                href="/players"
+                className="font-mono text-xs text-ink-dim border border-wire px-3 py-1 hover:border-wire-bright hover:text-ink transition-colors"
+              >
+                スコア詳細 →
+              </a>
             </div>
             <TeamResult
               result={result}
