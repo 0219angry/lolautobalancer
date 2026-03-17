@@ -1,10 +1,14 @@
 import type { Tier, RoleStats, ContributionScore } from "@/types";
 
-const _rawApiKey = process.env.RIOT_API_KEY;
-if (!_rawApiKey) {
-  throw new Error("RIOT_API_KEY environment variable is not set. Please check your .env.local file.");
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} environment variable is not set. Please check your .env.local file.`);
+  }
+  return value;
 }
-const RIOT_API_KEY: string = _rawApiKey;
+
+const RIOT_API_KEY = requireEnv("RIOT_API_KEY");
 
 const ASIA_HOST = "https://asia.api.riotgames.com";
 const JP1_HOST = "https://jp1.api.riotgames.com";
