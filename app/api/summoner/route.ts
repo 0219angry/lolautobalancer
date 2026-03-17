@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPuuid, getSummonerByPuuid, getRankBySummonerId } from "@/lib/riot";
+import { getPuuid, getRankByPuuid } from "@/lib/riot";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -12,12 +12,11 @@ export async function GET(req: NextRequest) {
 
   try {
     const puuid = await getPuuid(name, tag);
-    const summoner = await getSummonerByPuuid(puuid);
-    const rankInfo = await getRankBySummonerId(summoner.id);
+    const rankInfo = await getRankByPuuid(puuid);
 
     return NextResponse.json({
       puuid,
-      summonerName: summoner.name,
+      summonerName: name,
       tier: rankInfo?.tier ?? "SILVER",
       rank: rankInfo?.rank ?? "I",
       lp: rankInfo?.lp ?? 0,

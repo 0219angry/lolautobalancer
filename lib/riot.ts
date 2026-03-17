@@ -59,34 +59,29 @@ export async function getPuuid(gameName: string, tagLine: string): Promise<strin
   return data.puuid as string;
 }
 
-// PUUID → サモナー情報取得
-export async function getSummonerByPuuid(puuid: string): Promise<{ id: string; name: string }> {
-  const url = `${JP1_HOST}/lol/summoner/v4/summoners/by-puuid/${encodeURIComponent(puuid)}`;
-  const res = await riotFetch(url);
-  if (!res.ok) throw toRiotError(res.status, "サモナー情報");
-  const data = await res.json();
-  return { id: data.id as string, name: data.name as string };
-}
-
-// サモナーID → ランク情報取得
-export async function getRankBySummonerId(
-  summonerId: string
+// PUUID → ランク情報取得（league/v4/entries/by-puuid を使用）
+export async function getRankByPuuid(
+  puuid: string
 ): Promise<{ tier: Tier; rank: string; lp: number } | null> {
-  const url = `${JP1_HOST}/lol/league/v4/entries/by-summoner/${encodeURIComponent(summonerId)}`;
+  const url = `${JP1_HOST}/lol/league/v4/entries/by-puuid/${encodeURIComponent(puuid)}`;
   const res = await riotFetch(url);
   if (!res.ok) throw toRiotError(res.status, "ランク情報");
   const entries = await res.json();
 
-  // ソロキューのランクを優先
+  // ソロキューのランクを優先、なければフレックスを使用
   const soloQueue = (entries as Array<{ queueType: string; tier: Tier; rank: string; leaguePoints: number }>).find(
     (e) => e.queueType === "RANKED_SOLO_5x5"
   );
-  if (!soloQueue) return null;
+  const flexQueue = (entries as Array<{ queueType: string; tier: Tier; rank: string; leaguePoints: number }>).find(
+    (e) => e.queueType === "RANKED_FLEX_SR"
+  );
+  const entry = soloQueue ?? flexQueue;
+  if (!entry) return null;
 
   return {
-    tier: soloQueue.tier,
-    rank: soloQueue.rank,
-    lp: soloQueue.leaguePoints,
+    tier: entry.tier,
+    rank: entry.rank,
+    lp: entry.leaguePoints,
   };
 }
 
