@@ -21,6 +21,7 @@ export default function Home() {
   const [bulkText, setBulkText] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [cardResetKey, setCardResetKey] = useState(0);
 
   // テキストから Riot ID を抽出
   // ロビー参加/退出メッセージを追跡して「今いる人」を特定
@@ -90,19 +91,22 @@ export default function Home() {
     const results: (PlayerData | null)[] = Array(PLAYER_COUNT).fill(null);
     const errors: string[] = [];
 
-    for (let i = 0; i < parsedIds.length; i++) {
-      try {
-        const data = await fetchPlayerData(parsedIds[i], i);
-        results[i] = data;
-      } catch (e) {
-        errors.push(`${parsedIds[i]}: ${e instanceof Error ? e.message : "取得失敗"}`);
-        results[i] = null;
-      }
-      setBulkProgress({ done: i + 1, total: parsedIds.length });
-    }
+    await Promise.all(
+      parsedIds.slice(0, PLAYER_COUNT).map(async (id, i) => {
+        try {
+          const data = await fetchPlayerData(id, i);
+          results[i] = data;
+        } catch (e) {
+          errors.push(`${id}: ${e instanceof Error ? e.message : "取得失敗"}`);
+          results[i] = null;
+        }
+        setBulkProgress((prev) => ({ done: (prev?.done ?? 0) + 1, total: parsedIds.length }));
+      })
+    );
 
     setPreloadedPlayers([...results]);
     setPlayers([...results]);
+    setCardResetKey((k) => k + 1);
     setBulkLoading(false);
     setBulkProgress(null);
     setBulkOpen(false);
@@ -269,7 +273,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {Array.from({ length: PLAYER_COUNT }, (_, i) => (
-              <PlayerCard key={i} index={i} onDataChange={handleDataChange} preloadedData={preloadedPlayers[i]} />
+              <PlayerCard key={`${i}-${cardResetKey}`} index={i} onDataChange={handleDataChange} preloadedData={preloadedPlayers[i]} />
             ))}
           </div>
         </section>
