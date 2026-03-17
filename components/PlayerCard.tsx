@@ -24,7 +24,7 @@ interface Props {
 export default function PlayerCard({ index, onDataChange }: Props) {
   const [riotId, setRiotId] = useState("");
   const [mood, setMood] = useState<Mood>(1);
-  const [preferredRoles, setPreferredRoles] = useState<Role[]>([]);
+  const [preferredRoles, setPreferredRoles] = useState<(Role | null)[]>([null, null]);
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +66,8 @@ export default function PlayerCard({ index, onDataChange }: Props) {
         contributionScore = matchData.contributionScore;
       }
 
-      const roles = preferredRoles.length > 0 ? preferredRoles : fetchedPreferredRoles;
+      const hasPreferred = preferredRoles.filter(Boolean).length > 0;
+      const roles = hasPreferred ? (preferredRoles.filter(Boolean) as Role[]) : fetchedPreferredRoles;
 
       const data: PlayerData = {
         id: `player-${index}`,
@@ -83,10 +84,10 @@ export default function PlayerCard({ index, onDataChange }: Props) {
       };
 
       setPlayerData(data);
-      if (fetchedPreferredRoles.length > 0 && preferredRoles.length === 0) {
-        setPreferredRoles(fetchedPreferredRoles);
+      if (fetchedPreferredRoles.length > 0 && !hasPreferred) {
+        setPreferredRoles([fetchedPreferredRoles[0] ?? null, fetchedPreferredRoles[1] ?? null]);
       }
-      onDataChange(index, { ...data, mood, preferredRoles: roles });
+      onDataChange(index, data);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "取得失敗";
       setError(msg);
@@ -105,7 +106,7 @@ export default function PlayerCard({ index, onDataChange }: Props) {
       tier: manualTier,
       rank: manualRank,
       lp: manualLp,
-      preferredRoles,
+      preferredRoles: preferredRoles.filter(Boolean) as Role[],
       roleStats: {},
       contributionScore: {
         visionScore: 0,
@@ -129,16 +130,17 @@ export default function PlayerCard({ index, onDataChange }: Props) {
   }
 
   function updatePreferredRole(idx: 0 | 1, role: Role | "") {
-    const next = [...preferredRoles];
-    if (role === "") {
-      next.splice(idx, 1);
-    } else {
-      next[idx] = role;
+    const next: (Role | null)[] = [...preferredRoles];
+    next[idx] = role === "" ? null : role;
+
+    // 第1希望変更時に第2希望と重複した場合、第2希望をクリア
+    if (idx === 0 && role !== "" && next[1] === role) {
+      next[1] = null;
     }
-    const filtered = next.filter(Boolean) as Role[];
-    setPreferredRoles(filtered);
+
+    setPreferredRoles(next);
     if (playerData) {
-      const updated = { ...playerData, preferredRoles: filtered };
+      const updated = { ...playerData, preferredRoles: next.filter(Boolean) as Role[] };
       setPlayerData(updated);
       onDataChange(index, updated);
     }
@@ -281,7 +283,7 @@ export default function PlayerCard({ index, onDataChange }: Props) {
               className="bg-gray-700 text-white text-sm rounded px-2 py-1 flex-1"
             >
               <option value="">未指定</option>
-              {ROLES.filter((r) => r !== preferredRoles[0]).map((r) => <option key={r}>{r}</option>)}
+              {ROLES.filter((r) => r !== preferredRoles[0]).map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
         </div>

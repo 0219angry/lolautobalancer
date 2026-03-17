@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import type { PlayerData, BalanceResult, Role } from "@/types";
 import PlayerCard from "@/components/PlayerCard";
 import TeamResult from "@/components/TeamResult";
@@ -12,13 +12,20 @@ export default function Home() {
   const [result, setResult] = useState<BalanceResult | null>(null);
   const [balancing, setBalancing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const readyCount = players.filter(Boolean).length;
   const allReady = readyCount === PLAYER_COUNT;
 
   function showToast(msg: string) {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMsg(null);
+      toastTimeoutRef.current = null;
+    }, 3000);
   }
 
   const handleDataChange = useCallback((index: number, data: PlayerData | null) => {
