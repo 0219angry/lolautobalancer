@@ -11,13 +11,13 @@ module.exports = {
         surface: '#0f1218',
         raised:  '#141820',
         wire: {
-          DEFAULT: '#1e2530',
-          bright:  '#2e3d4e',
+          DEFAULT: '#252d3d',
+          bright:  '#3a4e62',
         },
         ink: {
           DEFAULT: '#ddd6c4',
-          dim:     '#7a7a68',
-          muted:   '#353d4e',
+          dim:     '#9a9888',  /* ~4.5:1 on surface */
+          muted:   '#606878',  /* ~3.5:1 on surface — labels/captions */
         },
         gold: {
           DEFAULT: '#c89b3c',
