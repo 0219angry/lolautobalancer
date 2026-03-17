@@ -43,16 +43,23 @@ export default function Home() {
   }, []);
 
   // テキストから Riot ID を抽出（参加/退出ログ対応）
+  // LoLクライアントは Riot ID に Unicode 双方向制御文字を埋め込み、
+  // かつ「名前 #タグ」のように # 前にスペースを挿入するため両方に対応
   const parsedIds = useMemo(() => {
-    const RIOT_ID = /([^\s\[\]:#]+#[A-Za-z0-9]{1,5})/;
+    // U+2066 LRI, U+2067 RLI, U+2068 FSI, U+2069 PDI, U+202A-U+202E 各種埋め込み,
+    // U+200B ZWSP, U+FEFF BOM など不可視/双方向制御文字をすべて除去
+    const BIDI = /[\u2066-\u2069\u202a-\u202e\u200b\ufeff]/g;
+    // # の前後に任意のスペースを許容し、名前・タグを別グループで捕捉
+    const RIOT_ID = /([^\s\[\]:#]+)\s*#\s*([A-Za-z0-9]{1,8})/;
     const joined = new Set<string>();
     const left = new Set<string>();
     const order: string[] = [];
 
-    for (const line of bulkText.split("\n")) {
+    for (const rawLine of bulkText.split("\n")) {
+      const line = rawLine.replace(BIDI, "");
       const m = line.match(RIOT_ID);
       if (!m) continue;
-      const id = m[1];
+      const id = `${m[1]}#${m[2]}`; // スペースを除いた標準形式に正規化
 
       if (line.includes("退出しました") || line.includes("left the lobby")) {
         left.add(id);
