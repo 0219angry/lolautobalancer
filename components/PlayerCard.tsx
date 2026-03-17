@@ -5,11 +5,11 @@ import type { PlayerInput, PlayerData, Mood, Role, Tier } from "@/types";
 import { fetchPlayerData } from "@/lib/fetchPlayer";
 
 const ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
+const ROLE_SHORT: Record<Role, string> = {
+  TOP: "TOP", JUNGLE: "JGL", MID: "MID", BOT: "BOT", SUPPORT: "SUP",
+};
 const MOOD_LABELS: Record<Mood, string> = {
-  0: "😴 疲れ気味",
-  1: "😐 普通",
-  2: "😊 好調",
-  3: "🔥 絶好調",
+  0: "疲れ気味", 1: "普通", 2: "好調", 3: "絶好調",
 };
 const TIER_LABELS: Tier[] = [
   "IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM",
@@ -32,7 +32,11 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
   const [error, setError] = useState<string | null>(null);
   const [manualMode, setManualMode] = useState(false);
 
-  // 一括インポート時に外部からデータを流し込む
+  const [manualTier, setManualTier] = useState<Tier>("GOLD");
+  const [manualRank, setManualRank] = useState("IV");
+  const [manualLp, setManualLp] = useState(0);
+  const [manualContrib, setManualContrib] = useState(50);
+
   useEffect(() => {
     if (!preloadedData) return;
     setRiotId(preloadedData.riotId);
@@ -43,12 +47,6 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
     setManualMode(false);
   }, [preloadedData]);
 
-  // 手動モード用
-  const [manualTier, setManualTier] = useState<Tier>("GOLD");
-  const [manualRank, setManualRank] = useState("IV");
-  const [manualLp, setManualLp] = useState(0);
-  const [manualContrib, setManualContrib] = useState(50);
-
   async function fetchPlayer() {
     if (!riotId.trim().includes("#")) {
       setError("Riot ID は「名前#タグ」形式で入力してください");
@@ -56,7 +54,6 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
     }
     setLoading(true);
     setError(null);
-
     try {
       const data = await fetchPlayerData(riotId, index);
       const hasPreferred = preferredRoles.filter(Boolean).length > 0;
@@ -88,12 +85,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
       lp: manualLp,
       preferredRoles: preferredRoles.filter(Boolean) as Role[],
       roleStats: {},
-      contributionScore: {
-        visionScore: 0,
-        teamFightParticipation: 0,
-        controlWardsBought: 0,
-        raw: manualContrib,
-      },
+      contributionScore: { visionScore: 0, teamFightParticipation: 0, controlWardsBought: 0, raw: manualContrib },
       mood,
     };
     setPlayerData(data);
@@ -112,12 +104,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
   function updatePreferredRole(idx: 0 | 1, role: Role | "") {
     const next: (Role | null)[] = [...preferredRoles];
     next[idx] = role === "" ? null : role;
-
-    // 第1希望変更時に第2希望と重複した場合、第2希望をクリア
-    if (idx === 0 && role !== "" && next[1] === role) {
-      next[1] = null;
-    }
-
+    if (idx === 0 && role !== "" && next[1] === role) next[1] = null;
     setPreferredRoles(next);
     if (playerData) {
       const updated = { ...playerData, preferredRoles: next.filter(Boolean) as Role[] };
@@ -126,19 +113,35 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
     }
   }
 
+  function clearPlayer() {
+    setPlayerData(null);
+    setRiotId("");
+    setError(null);
+    setManualMode(false);
+    setPreferredRoles([null, null]);
+    onDataChange(index, null);
+  }
+
   const tierColor: Record<string, string> = {
-    IRON: "text-gray-400", BRONZE: "text-amber-700", SILVER: "text-gray-300",
-    GOLD: "text-yellow-400", PLATINUM: "text-teal-400", EMERALD: "text-emerald-400",
-    DIAMOND: "text-blue-400", MASTER: "text-purple-400", GRANDMASTER: "text-red-400",
-    CHALLENGER: "text-yellow-300",
+    IRON: "text-ink-dim", BRONZE: "text-amber-600", SILVER: "text-ink-dim",
+    GOLD: "text-gold", PLATINUM: "text-teal-400", EMERALD: "text-emerald-400",
+    DIAMOND: "text-azure", MASTER: "text-purple-400", GRANDMASTER: "text-crimson",
+    CHALLENGER: "text-gold-bright",
   };
 
-  return (
-    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <span className="text-gray-400 text-sm font-bold w-6">#{index + 1}</span>
+  const leftBorderClass = playerData
+    ? "border-l-gold"
+    : error
+    ? "border-l-crimson"
+    : "border-l-wire";
 
-        {/* Riot ID 入力 */}
+  return (
+    <div className={`bg-surface border-l-2 ${leftBorderClass} flex flex-col`}>
+      {/* 入力行 */}
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-wire">
+        <span className="font-mono text-xs text-ink-muted w-5 flex-shrink-0">
+          {String(index + 1).padStart(2, "0")}
+        </span>
         <input
           type="text"
           value={riotId}
@@ -146,73 +149,86 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
           onKeyDown={(e) => e.key === "Enter" && fetchPlayer()}
           onBlur={() => riotId && !playerData && fetchPlayer()}
           placeholder="PlayerName#JP1"
-          className="flex-1 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={loading}
+          className="flex-1 bg-transparent text-ink text-xs font-mono placeholder-ink-muted focus:outline-none min-w-0"
         />
-
-        <button
-          onClick={fetchPlayer}
-          disabled={loading || !riotId}
-          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm px-3 py-1.5 rounded-lg transition-colors"
-        >
-          {loading ? "取得中…" : "取得"}
-        </button>
+        {playerData ? (
+          <button
+            onClick={clearPlayer}
+            className="text-ink-muted text-xs hover:text-crimson transition-colors flex-shrink-0"
+          >
+            ✕
+          </button>
+        ) : (
+          <button
+            onClick={fetchPlayer}
+            disabled={loading || !riotId}
+            className="border border-wire text-ink-dim text-xs px-2 py-0.5 hover:border-wire-bright hover:text-ink disabled:opacity-30 transition-colors flex-shrink-0"
+          >
+            {loading ? "..." : "取得"}
+          </button>
+        )}
       </div>
 
       {/* エラー */}
-      {error && (
-        <div className="text-red-400 text-xs bg-red-900/30 rounded px-2 py-1">
-          {error}
-          <button onClick={() => { setError(null); setManualMode(true); }} className="ml-2 underline">
+      {error && !playerData && (
+        <div className="px-3 py-2 border-b border-wire flex items-center justify-between">
+          <span className="text-crimson text-xs font-mono truncate">{error}</span>
+          <button
+            onClick={() => { setError(null); setManualMode(true); }}
+            className="text-ink-muted text-xs hover:text-ink ml-2 flex-shrink-0 underline"
+          >
             手動入力
           </button>
         </div>
       )}
 
-      {/* スケルトン */}
+      {/* ローディング */}
       {loading && (
-        <div className="animate-pulse flex gap-2">
-          <div className="h-4 bg-gray-700 rounded w-20" />
-          <div className="h-4 bg-gray-700 rounded w-16" />
+        <div className="px-3 py-2 border-b border-wire">
+          <div className="h-px bg-wire relative overflow-hidden">
+            <div className="absolute inset-y-0 left-0 w-1/3 bg-gold animate-pulse" />
+          </div>
         </div>
       )}
 
       {/* 手動入力モード */}
       {manualMode && !playerData && (
-        <div className="flex flex-col gap-2">
+        <div className="px-3 py-3 border-b border-wire flex flex-col gap-3">
           <div className="flex gap-2 flex-wrap">
             <select
               value={manualTier}
               onChange={(e) => setManualTier(e.target.value as Tier)}
-              className="bg-gray-700 text-white text-sm rounded px-2 py-1"
+              className="bg-raised border border-wire text-ink font-mono text-xs px-2 py-1 focus:outline-none focus:border-wire-bright"
             >
-              {TIER_LABELS.map((t) => <option key={t}>{t}</option>)}
+              {TIER_LABELS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <select
               value={manualRank}
               onChange={(e) => setManualRank(e.target.value)}
-              className="bg-gray-700 text-white text-sm rounded px-2 py-1"
+              className="bg-raised border border-wire text-ink font-mono text-xs px-2 py-1 focus:outline-none focus:border-wire-bright"
             >
-              {RANK_OPTIONS.map((r) => <option key={r}>{r}</option>)}
+              {RANK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
             <input
               type="number" min={0} max={99} value={manualLp}
               onChange={(e) => setManualLp(Number(e.target.value))}
-              className="bg-gray-700 text-white text-sm rounded px-2 py-1 w-20"
+              className="bg-raised border border-wire text-ink font-mono text-xs px-2 py-1 w-16 focus:outline-none focus:border-wire-bright"
               placeholder="LP"
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-gray-400 text-xs">貢献度</label>
+            <span className="font-mono text-xs text-ink-muted">貢献</span>
             <input
               type="range" min={0} max={100} value={manualContrib}
               onChange={(e) => setManualContrib(Number(e.target.value))}
-              className="flex-1"
+              className="flex-1 accent-gold"
             />
-            <span className="text-white text-xs w-8">{manualContrib}</span>
+            <span className="font-mono text-xs text-ink-dim w-6 text-right">{manualContrib}</span>
           </div>
           <button
             onClick={applyManualInput}
-            className="bg-green-700 hover:bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg w-full transition-colors"
+            className="border border-wire-bright text-ink text-xs px-3 py-1.5 hover:border-gold hover:text-gold transition-colors self-start"
           >
             確定
           </button>
@@ -221,50 +237,55 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
 
       {/* 取得済みプレイヤー情報 */}
       {playerData && (
-        <div className="flex flex-col gap-2">
+        <div className="px-3 py-2.5 flex flex-col gap-2.5">
+          {/* ランク行 */}
           <div className="flex items-center gap-2">
-            <span className={`text-sm font-bold ${tierColor[playerData.tier] ?? "text-white"}`}>
+            <span className={`font-mono text-xs font-bold ${tierColor[playerData.tier] ?? "text-ink"}`}>
               {playerData.tier} {playerData.rank}
             </span>
-            <span className="text-gray-400 text-xs">{playerData.lp} LP</span>
-            <span className="text-gray-300 text-xs ml-auto truncate">{playerData.summonerName}</span>
+            <span className="font-mono text-xs text-ink-dim">{playerData.lp}LP</span>
+            <span className="text-xs text-ink-dim ml-auto truncate">{playerData.summonerName}</span>
           </div>
 
-          {/* ムード選択 */}
-          <div className="flex gap-1 flex-wrap">
+          {/* 希望ロール */}
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-ink-muted w-12">第1希望</span>
+            <select
+              value={preferredRoles[0] ?? ""}
+              onChange={(e) => updatePreferredRole(0, e.target.value as Role | "")}
+              className="bg-raised border border-wire text-ink font-mono text-xs px-2 py-0.5 flex-1 focus:outline-none focus:border-wire-bright"
+            >
+              <option value="">—</option>
+              {ROLES.map((r) => <option key={r} value={r}>{ROLE_SHORT[r]}</option>)}
+            </select>
+            <span className="font-mono text-xs text-ink-muted w-12">第2希望</span>
+            <select
+              value={preferredRoles[1] ?? ""}
+              onChange={(e) => updatePreferredRole(1, e.target.value as Role | "")}
+              className="bg-raised border border-wire text-ink font-mono text-xs px-2 py-0.5 flex-1 focus:outline-none focus:border-wire-bright"
+            >
+              <option value="">—</option>
+              {ROLES.filter((r) => r !== preferredRoles[0]).map((r) => (
+                <option key={r} value={r}>{ROLE_SHORT[r]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* ムード */}
+          <div className="flex gap-1">
             {([0, 1, 2, 3] as Mood[]).map((m) => (
               <button
                 key={m}
                 onClick={() => updateMood(m)}
-                className={`text-xs px-2 py-1 rounded-lg transition-colors ${
-                  mood === m ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                className={`text-xs px-2 py-0.5 border transition-colors ${
+                  mood === m
+                    ? "border-gold text-gold"
+                    : "border-wire text-ink-dim hover:border-wire-bright hover:text-ink"
                 }`}
               >
                 {MOOD_LABELS[m]}
               </button>
             ))}
-          </div>
-
-          {/* 希望ロール */}
-          <div className="flex gap-2 items-center">
-            <span className="text-gray-400 text-xs w-14">第1希望</span>
-            <select
-              value={preferredRoles[0] ?? ""}
-              onChange={(e) => updatePreferredRole(0, e.target.value as Role | "")}
-              className="bg-gray-700 text-white text-sm rounded px-2 py-1 flex-1"
-            >
-              <option value="">未指定</option>
-              {ROLES.map((r) => <option key={r}>{r}</option>)}
-            </select>
-            <span className="text-gray-400 text-xs w-14">第2希望</span>
-            <select
-              value={preferredRoles[1] ?? ""}
-              onChange={(e) => updatePreferredRole(1, e.target.value as Role | "")}
-              className="bg-gray-700 text-white text-sm rounded px-2 py-1 flex-1"
-            >
-              <option value="">未指定</option>
-              {ROLES.filter((r) => r !== preferredRoles[0]).map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
           </div>
         </div>
       )}

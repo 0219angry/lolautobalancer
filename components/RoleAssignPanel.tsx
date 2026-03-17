@@ -3,13 +3,10 @@
 import type { PlayerData, Role } from "@/types";
 
 const ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
-const ROLE_COLORS: Record<Role, string> = {
-  TOP: "bg-orange-600",
-  JUNGLE: "bg-green-700",
-  MID: "bg-blue-600",
-  BOT: "bg-yellow-600",
-  SUPPORT: "bg-purple-600",
+const ROLE_SHORT: Record<Role, string> = {
+  TOP: "TOP", JUNGLE: "JGL", MID: "MID", BOT: "BOT", SUPPORT: "SUP",
 };
+const MOOD_SHORT = ["疲", "普", "好", "熱"];
 
 interface Props {
   team: PlayerData[];
@@ -22,46 +19,52 @@ export default function RoleAssignPanel({ team, teamColor, onRoleChange }: Props
   const duplicates = assignedRoles.filter((r, i) => assignedRoles.indexOf(r) !== i);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col divide-y divide-wire">
       {team.map((player) => {
         const isDuplicate = player.assignedRole && duplicates.includes(player.assignedRole);
+        const rowBg = teamColor === "blue" ? "bg-azure-dim" : "bg-crimson-dim";
+
         return (
           <div
             key={player.id}
-            className={`flex items-center gap-2 p-2 rounded-lg ${
-              teamColor === "blue" ? "bg-blue-950/50" : "bg-red-950/50"
-            } border ${isDuplicate ? "border-yellow-500" : "border-transparent"}`}
+            className={`flex items-center gap-2 px-3 py-2 ${rowBg} ${isDuplicate ? "border-l-2 border-l-gold" : ""}`}
           >
-            {/* ロールバッジ */}
+            {/* ロール選択 */}
             <select
               value={player.assignedRole ?? ""}
               onChange={(e) => onRoleChange(player.id, e.target.value as Role)}
-              className={`text-white text-xs font-bold px-2 py-1 rounded cursor-pointer ${
-                player.assignedRole ? ROLE_COLORS[player.assignedRole] : "bg-gray-600"
+              className={`bg-transparent font-mono text-xs px-1.5 py-0.5 border focus:outline-none w-14 flex-shrink-0 ${
+                player.assignedRole
+                  ? teamColor === "blue"
+                    ? "border-azure text-azure"
+                    : "border-crimson text-crimson"
+                  : "border-wire text-ink-dim"
               }`}
             >
-              <option value="">未定</option>
+              <option value="">—</option>
               {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
+                <option key={r} value={r}>{ROLE_SHORT[r]}</option>
               ))}
             </select>
 
             {/* プレイヤー名 */}
-            <span className="text-white text-sm flex-1 truncate">{player.summonerName}</span>
+            <span className="text-ink text-xs flex-1 truncate">{player.summonerName}</span>
 
             {/* ティア */}
-            <span className="text-gray-400 text-xs">
-              {player.tier} {player.rank}
+            <span className="font-mono text-xs text-ink-dim flex-shrink-0">
+              {player.tier.slice(0, 2)} {player.rank}
             </span>
 
             {/* ムード */}
-            <span className="text-xs">{["😴", "😐", "😊", "🔥"][player.mood]}</span>
+            <span className={`font-mono text-xs flex-shrink-0 ${
+              player.mood === 3 ? "text-gold" : player.mood === 0 ? "text-ink-muted" : "text-ink-dim"
+            }`}>
+              {MOOD_SHORT[player.mood]}
+            </span>
 
-            {/* ロール被り警告 */}
+            {/* 重複警告 */}
             {isDuplicate && (
-              <span className="text-yellow-400 text-xs">⚠</span>
+              <span className="font-mono text-xs text-gold flex-shrink-0">!</span>
             )}
           </div>
         );
