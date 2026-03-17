@@ -39,43 +39,49 @@ async function riotFetch(url: string, retries = 3): Promise<Response> {
   throw new Error("Riot API rate limit exceeded after retries");
 }
 
+// Riot API ステータスコードを意味のあるエラーに変換
+function toRiotError(status: number, context: string): Error {
+  if (status === 401 || status === 403) {
+    return new Error(`RIOT_API_KEY が無効または期限切れです（${status}）`);
+  }
+  if (status === 404) {
+    return new Error(`${context} が見つかりません（404）`);
+  }
+  return new Error(`Riot API エラー: ${context} (${status})`);
+}
+
 // Riot ID → PUUID 取得
 export async function getPuuid(gameName: string, tagLine: string): Promise<string> {
   const url = `${ASIA_HOST}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`;
   const res = await riotFetch(url);
-  if (!res.ok) throw new Error(`Account not found: ${res.status}`);
+  if (!res.ok) throw toRiotError(res.status, `アカウント ${gameName}#${tagLine}`);
   const data = await res.json();
   return data.puuid as string;
 }
 
-// PUUID → サモナー情報取得
-export async function getSummonerByPuuid(puuid: string): Promise<{ id: string; name: string }> {
-  const url = `${JP1_HOST}/lol/summoner/v4/summoners/by-puuid/${encodeURIComponent(puuid)}`;
-  const res = await riotFetch(url);
-  if (!res.ok) throw new Error(`Summoner not found: ${res.status}`);
-  const data = await res.json();
-  return { id: data.id as string, name: data.name as string };
-}
-
-// サモナーID → ランク情報取得
-export async function getRankBySummonerId(
-  summonerId: string
+// PUUID → ランク情報取得（league/v4/entries/by-puuid を使用）
+export async function getRankByPuuid(
+  puuid: string
 ): Promise<{ tier: Tier; rank: string; lp: number } | null> {
-  const url = `${JP1_HOST}/lol/league/v4/entries/by-summoner/${encodeURIComponent(summonerId)}`;
+  const url = `${JP1_HOST}/lol/league/v4/entries/by-puuid/${encodeURIComponent(puuid)}`;
   const res = await riotFetch(url);
-  if (!res.ok) throw new Error(`League entries not found: ${res.status}`);
+  if (!res.ok) throw toRiotError(res.status, "ランク情報");
   const entries = await res.json();
 
-  // ソロキューのランクを優先
+  // ソロキューのランクを優先、なければフレックスを使用
   const soloQueue = (entries as Array<{ queueType: string; tier: Tier; rank: string; leaguePoints: number }>).find(
     (e) => e.queueType === "RANKED_SOLO_5x5"
   );
-  if (!soloQueue) return null;
+  const flexQueue = (entries as Array<{ queueType: string; tier: Tier; rank: string; leaguePoints: number }>).find(
+    (e) => e.queueType === "RANKED_FLEX_SR"
+  );
+  const entry = soloQueue ?? flexQueue;
+  if (!entry) return null;
 
   return {
-    tier: soloQueue.tier,
-    rank: soloQueue.rank,
-    lp: soloQueue.leaguePoints,
+    tier: entry.tier,
+    rank: entry.rank,
+    lp: entry.leaguePoints,
   };
 }
 
@@ -83,7 +89,7 @@ export async function getRankBySummonerId(
 export async function getMatchIds(puuid: string, count = 20): Promise<string[]> {
   const url = `${ASIA_HOST}/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=0&count=${count}&queue=420`;
   const res = await riotFetch(url);
-  if (!res.ok) throw new Error(`Match IDs not found: ${res.status}`);
+  if (!res.ok) throw toRiotError(res.status, "マッチIDリスト");
   return res.json();
 }
 
@@ -91,7 +97,7 @@ export async function getMatchIds(puuid: string, count = 20): Promise<string[]> 
 export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
   const url = `${ASIA_HOST}/lol/match/v5/matches/${encodeURIComponent(matchId)}`;
   const res = await riotFetch(url);
-  if (!res.ok) throw new Error(`Match not found: ${res.status}`);
+  if (!res.ok) throw toRiotError(res.status, `マッチ ${matchId}`);
   return res.json();
 }
 
