@@ -22,20 +22,34 @@ export default function Home() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
-  // テキストから Riot ID を抽出（チャット形式含む）
-  // 例: "[All] TsuyukusaYu#M893: gg" → "TsuyukusaYu#M893"
+  // テキストから Riot ID を抽出
+  // ロビー参加/退出メッセージを追跡して「今いる人」を特定
+  // 例: "Name#TAG がロビーに参加しました" → 追加
+  //     "Name#TAG がロビーから退出しました" → 除外
+  //     "[All] Name#TAG: gg" → 追加（チャット発言は在席とみなす）
   const parsedIds = useMemo(() => {
-    const matches = bulkText.matchAll(/([^\s\[\]:#]+#[A-Za-z0-9]{1,5})/g);
-    const seen = new Set<string>();
-    const ids: string[] = [];
-    for (const m of matches) {
+    const RIOT_ID = /([^\s\[\]:#]+#[A-Za-z0-9]{1,5})/;
+    const joined = new Set<string>();
+    const left = new Set<string>();
+    const order: string[] = [];
+
+    for (const line of bulkText.split("\n")) {
+      const m = line.match(RIOT_ID);
+      if (!m) continue;
       const id = m[1];
-      if (!seen.has(id)) {
-        seen.add(id);
-        ids.push(id);
+
+      if (line.includes("退出しました") || line.includes("left the lobby")) {
+        left.add(id);
+        // 退出後に再参加の可能性があるので joined からは消さない
+      } else {
+        if (!joined.has(id)) order.push(id);
+        joined.add(id);
+        left.delete(id); // 再参加したら退出リストから除外
       }
     }
-    return ids;
+
+    // joined にいて left にいない人 = 今いる人（登場順を維持）
+    return order.filter((id) => !left.has(id));
   }, [bulkText]);
 
   const readyCount = players.filter(Boolean).length;
@@ -197,12 +211,12 @@ export default function Home() {
           {bulkOpen && (
             <div className="mb-4 bg-gray-800 border border-gray-600 rounded-xl p-4 flex flex-col gap-3">
               <p className="text-gray-400 text-xs">
-                ゲーム内チャットをそのままペーストできます。<code className="bg-gray-700 px-1 rounded">Name#TAG</code> 形式の Riot ID を自動抽出します（最大 {PLAYER_COUNT} 人）
+                ロビーチャット・ゲーム内チャットをそのままペーストできます。<code className="bg-gray-700 px-1 rounded">Name#TAG</code> 形式の Riot ID を自動抽出します（最大 {PLAYER_COUNT} 人）
               </p>
               <textarea
                 value={bulkText}
                 onChange={(e) => setBulkText(e.target.value)}
-                placeholder={"[All] TsuyukusaYu#M893: よろしく\n[All] Player2#JP1: gg\n\n--- または Riot ID 直接入力 ---\nPlayer3#JP1\nPlayer4#M893"}
+                placeholder={"TsuyukusaYu#M893がロビーに参加しました\nPlayer2#JP1がロビーに参加しました\nPlayer3#JP1がロビーに参加しました\nPlayer2#JP1がロビーから退出しました\n→ TsuyukusaYu#M893 と Player3#JP1 のみ検出されます"}
                 rows={7}
                 className="bg-gray-700 text-white text-sm rounded-lg px-3 py-2 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y font-mono"
               />
