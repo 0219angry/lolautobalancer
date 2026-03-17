@@ -96,12 +96,21 @@ export async function getMatchIds(puuid: string, count = 5): Promise<string[]> {
   return res.json();
 }
 
+// マッチ詳細キャッシュ（試合結果は不変なので TTL なしで永続キャッシュ）
+// サーバー再起動でクリアされるがセッション内の重複取得を防ぐ
+const matchDetailCache = new Map<string, MatchDetail>();
+
 // マッチID → マッチ詳細取得
 export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
+  const cached = matchDetailCache.get(matchId);
+  if (cached) return cached;
+
   const url = `${ASIA_HOST}/lol/match/v5/matches/${encodeURIComponent(matchId)}`;
   const res = await riotFetch(url);
   if (!res.ok) throw toRiotError(res.status, `マッチ ${matchId}`);
-  return res.json();
+  const detail: MatchDetail = await res.json();
+  matchDetailCache.set(matchId, detail);
+  return detail;
 }
 
 // マッチ履歴からロール別スタッツと貢献度を算出
