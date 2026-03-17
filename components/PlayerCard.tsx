@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { PlayerInput, PlayerData, Mood, Role, Tier } from "@/types";
+import { fetchPlayerData } from "@/lib/fetchPlayer";
 
 const ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
 const MOOD_LABELS: Record<Mood, string> = {
@@ -19,9 +20,10 @@ const RANK_OPTIONS = ["IV", "III", "II", "I"];
 interface Props {
   index: number;
   onDataChange: (index: number, data: PlayerData | null) => void;
+  preloadedData?: PlayerData | null;
 }
 
-export default function PlayerCard({ index, onDataChange }: Props) {
+export default function PlayerCard({ index, onDataChange, preloadedData }: Props) {
   const [riotId, setRiotId] = useState("");
   const [mood, setMood] = useState<Mood>(1);
   const [preferredRoles, setPreferredRoles] = useState<(Role | null)[]>([null, null]);
@@ -30,6 +32,17 @@ export default function PlayerCard({ index, onDataChange }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [manualMode, setManualMode] = useState(false);
 
+  // 一括インポート時に外部からデータを流し込む
+  useEffect(() => {
+    if (!preloadedData) return;
+    setRiotId(preloadedData.riotId);
+    setMood(preloadedData.mood);
+    setPreferredRoles([preloadedData.preferredRoles[0] ?? null, preloadedData.preferredRoles[1] ?? null]);
+    setPlayerData(preloadedData);
+    setError(null);
+    setManualMode(false);
+  }, [preloadedData]);
+
   // 手動モード用
   const [manualTier, setManualTier] = useState<Tier>("GOLD");
   const [manualRank, setManualRank] = useState("IV");
@@ -37,8 +50,7 @@ export default function PlayerCard({ index, onDataChange }: Props) {
   const [manualContrib, setManualContrib] = useState(50);
 
   async function fetchPlayer() {
-    const parts = riotId.trim().split("#");
-    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    if (!riotId.trim().includes("#")) {
       setError("Riot ID は「名前#タグ」形式で入力してください");
       return;
     }
@@ -46,47 +58,15 @@ export default function PlayerCard({ index, onDataChange }: Props) {
     setError(null);
 
     try {
-      const [name, tag] = parts;
-      const sumRes = await fetch(`/api/summoner?name=${encodeURIComponent(name)}&tag=${encodeURIComponent(tag)}`);
-      if (!sumRes.ok) {
-        const e = await sumRes.json();
-        throw new Error(e.error ?? "サモナー取得失敗");
-      }
-      const sumData = await sumRes.json();
-
-      const matchRes = await fetch(`/api/matches?puuid=${encodeURIComponent(sumData.puuid)}`);
-      let roleStats = {};
-      let fetchedPreferredRoles: Role[] = [];
-      let contributionScore = { visionScore: 0, teamFightParticipation: 0, controlWardsBought: 0, raw: 50 };
-
-      if (matchRes.ok) {
-        const matchData = await matchRes.json();
-        roleStats = matchData.roleStats;
-        fetchedPreferredRoles = matchData.preferredRoles as Role[];
-        contributionScore = matchData.contributionScore;
-      }
-
+      const data = await fetchPlayerData(riotId, index);
       const hasPreferred = preferredRoles.filter(Boolean).length > 0;
-      const roles = hasPreferred ? (preferredRoles.filter(Boolean) as Role[]) : fetchedPreferredRoles;
-
-      const data: PlayerData = {
-        id: `player-${index}`,
-        riotId: riotId.trim(),
-        puuid: sumData.puuid,
-        summonerName: sumData.summonerName,
-        tier: sumData.tier,
-        rank: sumData.rank,
-        lp: sumData.lp,
-        preferredRoles: roles,
-        roleStats,
-        contributionScore,
-        mood,
-      };
-
-      setPlayerData(data);
-      if (fetchedPreferredRoles.length > 0 && !hasPreferred) {
-        setPreferredRoles([fetchedPreferredRoles[0] ?? null, fetchedPreferredRoles[1] ?? null]);
+      if (hasPreferred) {
+        data.preferredRoles = preferredRoles.filter(Boolean) as Role[];
+      } else {
+        setPreferredRoles([data.preferredRoles[0] ?? null, data.preferredRoles[1] ?? null]);
       }
+      data.mood = mood;
+      setPlayerData(data);
       onDataChange(index, data);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "取得失敗";
