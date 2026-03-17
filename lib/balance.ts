@@ -88,11 +88,13 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
     let bestDiff = Math.abs(blueScore - redScore);
     let bestSwap: [number, number] | null = null;
 
+    const fixedRolePlayerIds = new Set(players.filter((p) => p.assignedRole).map((p) => p.id));
+
     for (let bi = 0; bi < blueTeam.length; bi++) {
       for (let ri = 0; ri < redTeam.length; ri++) {
         // assignedRole が設定されたプレイヤーはロール固定のため除外
-        if (players.find((p) => p.id === blueTeam[bi].id)?.assignedRole) continue;
-        if (players.find((p) => p.id === redTeam[ri].id)?.assignedRole) continue;
+        if (fixedRolePlayerIds.has(blueTeam[bi].id)) continue;
+        if (fixedRolePlayerIds.has(redTeam[ri].id)) continue;
 
         const newBlue = blueScore - blueTeam[bi]._score + redTeam[ri]._score;
         const newRed = redScore - redTeam[ri]._score + blueTeam[bi]._score;
