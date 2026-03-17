@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    const status = message.includes("not found") ? 404 : message.includes("rate limit") ? 429 : 500;
+    let status = 500;
+    if (message.includes("見つかりません")) status = 404;
+    else if (message.includes("無効または期限切れ")) status = 403;
+    else if (message.includes("rate limit") || message.includes("レート制限")) status = 429;
     return NextResponse.json({ error: message }, { status });
   }
 }
