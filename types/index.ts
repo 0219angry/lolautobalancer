@@ -57,6 +57,7 @@ export interface PlayerData {
   contributionScore: ContributionScore;
   mood: Mood;
   assignedRole?: Role; // チーム分け後に確定したロール（結果画面で上書き可）
+  autoTags?: string[]; // matchデータから自動生成されたタグ
 }
 
 // チーム分けリクエスト

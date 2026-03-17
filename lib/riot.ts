@@ -21,22 +21,25 @@ const MAX_AVG_VISION_SCORE = 60;
 const MAX_AVG_CONTROL_WARDS = 2;
 
 // Riot API へのリクエスト（リトライ付き）
-async function riotFetch(url: string, retries = 3): Promise<Response> {
+async function riotFetch(url: string, retries = 2): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     const res = await fetch(url, {
       headers: { "X-Riot-Token": RIOT_API_KEY },
       cache: "no-store",
+      signal: AbortSignal.timeout(8000), // 1リクエスト最大8秒
     });
 
     if (res.status === 429) {
       const retryAfter = parseInt(res.headers.get("Retry-After") ?? "1", 10);
-      await new Promise((r) => setTimeout(r, retryAfter * 1000 * Math.pow(2, i)));
+      // Retry-After が長すぎる場合はすぐ諦める（マッチデータは任意情報）
+      if (retryAfter > 5) throw new Error("Riot API レート制限中");
+      await new Promise((r) => setTimeout(r, retryAfter * 1000));
       continue;
     }
 
     return res;
   }
-  throw new Error("Riot API rate limit exceeded after retries");
+  throw new Error("Riot API レート制限中");
 }
 
 // Riot API ステータスコードを意味のあるエラーに変換
@@ -86,7 +89,7 @@ export async function getRankByPuuid(
 }
 
 // PUUID → 直近マッチIDリスト取得
-export async function getMatchIds(puuid: string, count = 20): Promise<string[]> {
+export async function getMatchIds(puuid: string, count = 5): Promise<string[]> {
   const url = `${ASIA_HOST}/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=0&count=${count}&queue=420`;
   const res = await riotFetch(url);
   if (!res.ok) throw toRiotError(res.status, "マッチIDリスト");
@@ -104,7 +107,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
 // マッチ履歴からロール別スタッツと貢献度を算出
 export async function analyzeMatches(
   puuid: string,
-  count = 20
+  count = 5
 ): Promise<{
   roleStats: RoleStats;
   preferredRoles: string[];

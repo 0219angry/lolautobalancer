@@ -15,18 +15,38 @@ export default function TeamResult({ result, onRoleChange, onReconfirm, onReshuf
   const { blueTeam, redTeam, blueScore, redScore, scoreDiff, diagnostics } = result;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/* バランスメーター */}
       <BalanceMeter blueScore={blueScore} redScore={redScore} scoreDiff={scoreDiff} />
 
-      {/* 診断タグ */}
-      <DiagnosticTags diagnostics={diagnostics} />
+      {/* 診断 */}
+      {diagnostics.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {diagnostics.map((d, i) => (
+            <span
+              key={i}
+              className={`font-mono text-sm px-3 py-1 border ${
+                d.type === "ok"
+                  ? "border-emerald-800 text-emerald-400"
+                  : "border-gold-dim text-gold"
+              }`}
+            >
+              {d.type === "ok" ? "OK" : "!"}{" "}
+              {d.team === "blue" ? "B " : d.team === "red" ? "R " : ""}
+              {d.message}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* チーム表示 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-wire">
         {/* Blue チーム */}
-        <div className="bg-gray-800 rounded-xl p-4 border border-blue-700">
-          <h3 className="text-blue-400 font-bold text-lg mb-3">🔵 BLUE TEAM</h3>
+        <div className="bg-surface">
+          <div className="px-4 py-3 border-b border-wire flex items-center gap-2">
+            <span className="w-2 h-2 bg-azure flex-shrink-0" />
+            <span className="font-mono text-sm text-azure uppercase tracking-widest">Blue Side</span>
+          </div>
           <RoleAssignPanel
             team={blueTeam}
             teamColor="blue"
@@ -35,8 +55,11 @@ export default function TeamResult({ result, onRoleChange, onReconfirm, onReshuf
         </div>
 
         {/* Red チーム */}
-        <div className="bg-gray-800 rounded-xl p-4 border border-red-700">
-          <h3 className="text-red-400 font-bold text-lg mb-3">🔴 RED TEAM</h3>
+        <div className="bg-surface">
+          <div className="px-4 py-3 border-b border-wire flex items-center gap-2">
+            <span className="w-2 h-2 bg-crimson flex-shrink-0" />
+            <span className="font-mono text-sm text-crimson uppercase tracking-widest">Red Side</span>
+          </div>
           <RoleAssignPanel
             team={redTeam}
             teamColor="red"
@@ -46,41 +69,20 @@ export default function TeamResult({ result, onRoleChange, onReconfirm, onReshuf
       </div>
 
       {/* アクションボタン */}
-      <div className="flex gap-3 justify-center">
+      <div className="flex gap-3">
         <button
           onClick={onReconfirm}
-          className="bg-green-700 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-bold transition-colors"
+          className="border border-wire-bright text-ink text-sm font-mono px-5 py-2.5 hover:border-gold hover:text-gold transition-colors"
         >
           ロール再確定 → 再計算
         </button>
         <button
           onClick={onReshuffle}
-          className="bg-gray-600 hover:bg-gray-500 text-white px-6 py-2 rounded-lg font-bold transition-colors"
+          className="border border-wire text-ink-dim text-sm font-mono px-5 py-2.5 hover:border-wire-bright hover:text-ink transition-colors"
         >
           再シャッフル
         </button>
       </div>
-    </div>
-  );
-}
-
-function DiagnosticTags({ diagnostics }: { diagnostics: Diagnostic[] }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {diagnostics.map((d, i) => (
-        <span
-          key={i}
-          className={`text-xs px-3 py-1 rounded-full font-medium ${
-            d.type === "ok"
-              ? "bg-green-900/60 text-green-300 border border-green-700"
-              : "bg-yellow-900/60 text-yellow-300 border border-yellow-700"
-          }`}
-        >
-          {d.type === "ok" ? "✓" : "⚠"}{" "}
-          {d.team === "blue" ? "🔵 " : d.team === "red" ? "🔴 " : ""}
-          {d.message}
-        </span>
-      ))}
     </div>
   );
 }
