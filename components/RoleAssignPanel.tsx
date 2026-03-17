@@ -27,13 +27,13 @@ export default function RoleAssignPanel({ team, teamColor, onRoleChange }: Props
         return (
           <div
             key={player.id}
-            className={`flex items-center gap-2 px-3 py-2 ${rowBg} ${isDuplicate ? "border-l-2 border-l-gold" : ""}`}
+            className={`flex items-center gap-2 px-4 py-3 ${rowBg} ${isDuplicate ? "border-l-2 border-l-gold" : ""}`}
           >
             {/* ロール選択 */}
             <select
               value={player.assignedRole ?? ""}
               onChange={(e) => onRoleChange(player.id, e.target.value as Role)}
-              className={`bg-transparent font-mono text-xs px-1.5 py-0.5 border focus:outline-none w-14 flex-shrink-0 ${
+              className={`bg-transparent font-mono text-sm px-2 py-1 border focus:outline-none w-16 flex-shrink-0 ${
                 player.assignedRole
                   ? teamColor === "blue"
                     ? "border-azure text-azure"
@@ -48,15 +48,15 @@ export default function RoleAssignPanel({ team, teamColor, onRoleChange }: Props
             </select>
 
             {/* プレイヤー名 */}
-            <span className="text-ink text-xs flex-1 truncate">{player.summonerName}</span>
+            <span className="text-ink text-sm flex-1 truncate">{player.summonerName}</span>
 
             {/* ティア */}
-            <span className="font-mono text-xs text-ink-dim flex-shrink-0">
+            <span className="font-mono text-sm text-ink-dim flex-shrink-0">
               {player.tier.slice(0, 2)} {player.rank}
             </span>
 
             {/* ムード */}
-            <span className={`font-mono text-xs flex-shrink-0 ${
+            <span className={`font-mono text-sm flex-shrink-0 ${
               player.mood === 3 ? "text-gold" : player.mood === 0 ? "text-ink-muted" : "text-ink-dim"
             }`}>
               {MOOD_SHORT[player.mood]}
@@ -64,7 +64,7 @@ export default function RoleAssignPanel({ team, teamColor, onRoleChange }: Props
 
             {/* 重複警告 */}
             {isDuplicate && (
-              <span className="font-mono text-xs text-gold flex-shrink-0">!</span>
+              <span className="font-mono text-sm text-gold flex-shrink-0">!</span>
             )}
           </div>
         );

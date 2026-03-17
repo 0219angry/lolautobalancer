@@ -138,8 +138,8 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
   return (
     <div className={`bg-surface border-l-2 ${leftBorderClass} flex flex-col`}>
       {/* 入力行 */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-wire">
-        <span className="font-mono text-xs text-ink-muted w-5 flex-shrink-0">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-wire">
+        <span className="font-mono text-sm text-ink-muted w-5 flex-shrink-0">
           {String(index + 1).padStart(2, "0")}
         </span>
         <input
@@ -150,12 +150,12 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
           onBlur={() => riotId && !playerData && fetchPlayer()}
           placeholder="PlayerName#JP1"
           disabled={loading}
-          className="flex-1 bg-transparent text-ink text-xs font-mono placeholder-ink-muted focus:outline-none min-w-0"
+          className="flex-1 bg-transparent text-ink text-sm font-mono placeholder-ink-muted focus:outline-none min-w-0"
         />
         {playerData ? (
           <button
             onClick={clearPlayer}
-            className="text-ink-muted text-xs hover:text-crimson transition-colors flex-shrink-0"
+            className="text-ink-muted text-sm hover:text-crimson transition-colors flex-shrink-0"
           >
             ✕
           </button>
@@ -163,7 +163,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
           <button
             onClick={fetchPlayer}
             disabled={loading || !riotId}
-            className="border border-wire text-ink-dim text-xs px-2 py-0.5 hover:border-wire-bright hover:text-ink disabled:opacity-30 transition-colors flex-shrink-0"
+            className="border border-wire text-ink-dim text-sm px-3 py-1 hover:border-wire-bright hover:text-ink disabled:opacity-30 transition-colors flex-shrink-0"
           >
             {loading ? "..." : "取得"}
           </button>
@@ -172,11 +172,11 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
 
       {/* エラー */}
       {error && !playerData && (
-        <div className="px-3 py-2 border-b border-wire flex items-center justify-between">
-          <span className="text-crimson text-xs font-mono truncate">{error}</span>
+        <div className="px-4 py-2.5 border-b border-wire flex items-center justify-between">
+          <span className="text-crimson text-sm font-mono truncate">{error}</span>
           <button
             onClick={() => { setError(null); setManualMode(true); }}
-            className="text-ink-muted text-xs hover:text-ink ml-2 flex-shrink-0 underline"
+            className="text-ink-muted text-sm hover:text-ink ml-2 flex-shrink-0 underline"
           >
             手動入力
           </button>
@@ -194,41 +194,41 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
 
       {/* 手動入力モード */}
       {manualMode && !playerData && (
-        <div className="px-3 py-3 border-b border-wire flex flex-col gap-3">
+        <div className="px-4 py-4 border-b border-wire flex flex-col gap-3">
           <div className="flex gap-2 flex-wrap">
             <select
               value={manualTier}
               onChange={(e) => setManualTier(e.target.value as Tier)}
-              className="bg-raised border border-wire text-ink font-mono text-xs px-2 py-1 focus:outline-none focus:border-wire-bright"
+              className="bg-raised border border-wire text-ink font-mono text-sm px-2 py-1 focus:outline-none focus:border-wire-bright"
             >
               {TIER_LABELS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <select
               value={manualRank}
               onChange={(e) => setManualRank(e.target.value)}
-              className="bg-raised border border-wire text-ink font-mono text-xs px-2 py-1 focus:outline-none focus:border-wire-bright"
+              className="bg-raised border border-wire text-ink font-mono text-sm px-2 py-1 focus:outline-none focus:border-wire-bright"
             >
               {RANK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
             <input
               type="number" min={0} max={99} value={manualLp}
               onChange={(e) => setManualLp(Number(e.target.value))}
-              className="bg-raised border border-wire text-ink font-mono text-xs px-2 py-1 w-16 focus:outline-none focus:border-wire-bright"
+              className="bg-raised border border-wire text-ink font-mono text-sm px-2 py-1 w-16 focus:outline-none focus:border-wire-bright"
               placeholder="LP"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-ink-muted">貢献</span>
+            <span className="font-mono text-sm text-ink-muted">貢献</span>
             <input
               type="range" min={0} max={100} value={manualContrib}
               onChange={(e) => setManualContrib(Number(e.target.value))}
               className="flex-1 accent-gold"
             />
-            <span className="font-mono text-xs text-ink-dim w-6 text-right">{manualContrib}</span>
+            <span className="font-mono text-sm text-ink-dim w-6 text-right">{manualContrib}</span>
           </div>
           <button
             onClick={applyManualInput}
-            className="border border-wire-bright text-ink text-xs px-3 py-1.5 hover:border-gold hover:text-gold transition-colors self-start"
+            className="border border-wire-bright text-ink text-sm px-3 py-1.5 hover:border-gold hover:text-gold transition-colors self-start"
           >
             確定
           </button>
@@ -237,32 +237,32 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
 
       {/* 取得済みプレイヤー情報 */}
       {playerData && (
-        <div className="px-3 py-2.5 flex flex-col gap-2.5">
+        <div className="px-4 py-3 flex flex-col gap-2.5">
           {/* ランク行 */}
           <div className="flex items-center gap-2">
-            <span className={`font-mono text-xs font-bold ${tierColor[playerData.tier] ?? "text-ink"}`}>
+            <span className={`font-mono text-sm font-bold ${tierColor[playerData.tier] ?? "text-ink"}`}>
               {playerData.tier} {playerData.rank}
             </span>
-            <span className="font-mono text-xs text-ink-dim">{playerData.lp}LP</span>
-            <span className="text-xs text-ink-dim ml-auto truncate">{playerData.summonerName}</span>
+            <span className="font-mono text-sm text-ink-dim">{playerData.lp}LP</span>
+            <span className="text-sm text-ink-dim ml-auto truncate">{playerData.summonerName}</span>
           </div>
 
           {/* 希望ロール */}
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-ink-muted w-12">第1希望</span>
+            <span className="font-mono text-sm text-ink-muted w-14">第1希望</span>
             <select
               value={preferredRoles[0] ?? ""}
               onChange={(e) => updatePreferredRole(0, e.target.value as Role | "")}
-              className="bg-raised border border-wire text-ink font-mono text-xs px-2 py-0.5 flex-1 focus:outline-none focus:border-wire-bright"
+              className="bg-raised border border-wire text-ink font-mono text-sm px-2 py-1 flex-1 focus:outline-none focus:border-wire-bright"
             >
               <option value="">—</option>
               {ROLES.map((r) => <option key={r} value={r}>{ROLE_SHORT[r]}</option>)}
             </select>
-            <span className="font-mono text-xs text-ink-muted w-12">第2希望</span>
+            <span className="font-mono text-sm text-ink-muted w-14">第2希望</span>
             <select
               value={preferredRoles[1] ?? ""}
               onChange={(e) => updatePreferredRole(1, e.target.value as Role | "")}
-              className="bg-raised border border-wire text-ink font-mono text-xs px-2 py-0.5 flex-1 focus:outline-none focus:border-wire-bright"
+              className="bg-raised border border-wire text-ink font-mono text-sm px-2 py-1 flex-1 focus:outline-none focus:border-wire-bright"
             >
               <option value="">—</option>
               {ROLES.filter((r) => r !== preferredRoles[0]).map((r) => (
@@ -277,7 +277,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
               <button
                 key={m}
                 onClick={() => updateMood(m)}
-                className={`text-xs px-2 py-0.5 border transition-colors ${
+                className={`text-sm px-2.5 py-1 border transition-colors ${
                   mood === m
                     ? "border-gold text-gold"
                     : "border-wire text-ink-dim hover:border-wire-bright hover:text-ink"

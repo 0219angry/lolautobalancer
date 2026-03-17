@@ -17,19 +17,19 @@ export default function BalanceMeter({ blueScore, redScore, scoreDiff }: Props) 
     diffPercent <= 5 ? "text-emerald-400" : diffPercent <= 15 ? "text-gold" : "text-crimson";
 
   return (
-    <div className="border border-wire bg-surface p-4">
+    <div className="border border-wire bg-surface p-5">
       {/* スコア数値 */}
       <div className="flex justify-between items-end mb-3">
         <div>
-          <p className="font-mono text-xs text-azure uppercase tracking-widest mb-0.5">Blue</p>
+          <p className="font-mono text-sm text-azure uppercase tracking-widest mb-0.5">Blue</p>
           <p className="font-mono text-2xl font-bold text-azure">{blueScore}</p>
         </div>
         <div className="text-center">
-          <p className={`font-mono text-xs uppercase tracking-widest ${balanceColor}`}>{balanceLabel}</p>
-          <p className={`font-mono text-xs ${balanceColor}`}>diff {diffPercent}%</p>
+          <p className={`font-mono text-sm uppercase tracking-widest ${balanceColor}`}>{balanceLabel}</p>
+          <p className={`font-mono text-sm ${balanceColor}`}>diff {diffPercent}%</p>
         </div>
         <div className="text-right">
-          <p className="font-mono text-xs text-crimson uppercase tracking-widest mb-0.5">Red</p>
+          <p className="font-mono text-sm text-crimson uppercase tracking-widest mb-0.5">Red</p>
           <p className="font-mono text-2xl font-bold text-crimson">{redScore}</p>
         </div>
       </div>
@@ -47,8 +47,8 @@ export default function BalanceMeter({ blueScore, redScore, scoreDiff }: Props) 
       </div>
 
       <div className="flex justify-between mt-1.5">
-        <span className="font-mono text-xs text-azure-bright">{bluePercent}%</span>
-        <span className="font-mono text-xs text-crimson-bright">{100 - bluePercent}%</span>
+        <span className="font-mono text-sm text-azure-bright">{bluePercent}%</span>
+        <span className="font-mono text-sm text-crimson-bright">{100 - bluePercent}%</span>
       </div>
     </div>
   );

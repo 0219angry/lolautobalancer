@@ -25,7 +25,7 @@ export default function TeamResult({ result, onRoleChange, onReconfirm, onReshuf
           {diagnostics.map((d, i) => (
             <span
               key={i}
-              className={`font-mono text-xs px-2 py-0.5 border ${
+              className={`font-mono text-sm px-3 py-1 border ${
                 d.type === "ok"
                   ? "border-emerald-800 text-emerald-400"
                   : "border-gold-dim text-gold"
@@ -43,9 +43,9 @@ export default function TeamResult({ result, onRoleChange, onReconfirm, onReshuf
       <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-wire">
         {/* Blue チーム */}
         <div className="bg-surface">
-          <div className="px-3 py-2 border-b border-wire flex items-center gap-2">
+          <div className="px-4 py-3 border-b border-wire flex items-center gap-2">
             <span className="w-2 h-2 bg-azure flex-shrink-0" />
-            <span className="font-mono text-xs text-azure uppercase tracking-widest">Blue Side</span>
+            <span className="font-mono text-sm text-azure uppercase tracking-widest">Blue Side</span>
           </div>
           <RoleAssignPanel
             team={blueTeam}
@@ -56,9 +56,9 @@ export default function TeamResult({ result, onRoleChange, onReconfirm, onReshuf
 
         {/* Red チーム */}
         <div className="bg-surface">
-          <div className="px-3 py-2 border-b border-wire flex items-center gap-2">
+          <div className="px-4 py-3 border-b border-wire flex items-center gap-2">
             <span className="w-2 h-2 bg-crimson flex-shrink-0" />
-            <span className="font-mono text-xs text-crimson uppercase tracking-widest">Red Side</span>
+            <span className="font-mono text-sm text-crimson uppercase tracking-widest">Red Side</span>
           </div>
           <RoleAssignPanel
             team={redTeam}
@@ -72,13 +72,13 @@ export default function TeamResult({ result, onRoleChange, onReconfirm, onReshuf
       <div className="flex gap-3">
         <button
           onClick={onReconfirm}
-          className="border border-wire-bright text-ink text-xs font-mono px-4 py-2 hover:border-gold hover:text-gold transition-colors"
+          className="border border-wire-bright text-ink text-sm font-mono px-5 py-2.5 hover:border-gold hover:text-gold transition-colors"
         >
           ロール再確定 → 再計算
         </button>
         <button
           onClick={onReshuffle}
-          className="border border-wire text-ink-dim text-xs font-mono px-4 py-2 hover:border-wire-bright hover:text-ink transition-colors"
+          className="border border-wire text-ink-dim text-sm font-mono px-5 py-2.5 hover:border-wire-bright hover:text-ink transition-colors"
         >
           再シャッフル
         </button>

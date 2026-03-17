@@ -176,11 +176,11 @@ export default function Home() {
             <p className="font-mono text-xs text-ink-dim tracking-widest uppercase mb-1">
               League of Legends · Custom Match
             </p>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-3xl font-bold tracking-tight">
               TEAM <span className="text-gold">BALANCER</span>
             </h1>
           </div>
-          <p className="font-mono text-xs text-ink-muted hidden sm:block">JP1 · RIOT API v5</p>
+          <p className="font-mono text-sm text-ink-muted hidden sm:block">JP1 · RIOT API v5</p>
         </div>
       </header>
 
@@ -192,11 +192,11 @@ export default function Home() {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Players</span>
-              <span className="font-mono text-xs text-gold">{readyCount} / {PLAYER_COUNT}</span>
+              <span className="font-mono text-sm text-gold">{readyCount} / {PLAYER_COUNT}</span>
             </div>
             <button
               onClick={() => setBulkOpen((v) => !v)}
-              className="border border-wire text-ink-dim text-xs px-3 py-1.5 tracking-wide hover:border-wire-bright hover:text-ink transition-colors"
+              className="border border-wire text-ink-dim text-sm px-3 py-1.5 tracking-wide hover:border-wire-bright hover:text-ink transition-colors"
             >
               {bulkOpen ? "閉じる" : "一括入力"}
             </button>
@@ -207,7 +207,7 @@ export default function Home() {
             <div className="mb-5 border border-wire bg-surface p-5 flex flex-col gap-4">
               <div>
                 <p className="font-mono text-xs text-ink-muted uppercase tracking-widest mb-1">Bulk Import</p>
-                <p className="text-xs text-ink-dim">
+                <p className="text-sm text-ink-dim">
                   ロビーチャットをそのままペーストできます。参加/退出ログから現在の参加者を自動判定します。
                 </p>
               </div>
@@ -216,7 +216,7 @@ export default function Home() {
                 onChange={(e) => setBulkText(e.target.value)}
                 placeholder={"TsuyukusaYu#M893がロビーに参加しました\nPlayer2#JP1がロビーに参加しました\nPlayer2#JP1がロビーから退出しました\n\n[All] Player3#JP1: よろしく"}
                 rows={6}
-                className="bg-raised border border-wire text-ink text-xs font-mono px-3 py-2 placeholder-ink-muted focus:outline-none focus:border-wire-bright resize-y w-full"
+                className="bg-raised border border-wire text-ink text-sm font-mono px-3 py-2 placeholder-ink-muted focus:outline-none focus:border-wire-bright resize-y w-full"
               />
 
               {/* 抽出プレビュー */}
@@ -231,12 +231,12 @@ export default function Home() {
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {parsedIds.slice(0, PLAYER_COUNT).map((id) => (
-                      <span key={id} className="border border-wire-bright text-ink-dim font-mono text-xs px-2 py-0.5">
+                      <span key={id} className="border border-wire-bright text-ink-dim font-mono text-sm px-2 py-0.5">
                         {id}
                       </span>
                     ))}
                     {parsedIds.length > PLAYER_COUNT && (
-                      <span className="text-crimson font-mono text-xs px-2 py-0.5">
+                      <span className="text-crimson font-mono text-sm px-2 py-0.5">
                         +{parsedIds.length - PLAYER_COUNT}
                       </span>
                     )}
@@ -252,14 +252,14 @@ export default function Home() {
                       style={{ width: `${(bulkProgress.done / bulkProgress.total) * 100}%` }}
                     />
                   </div>
-                  <span className="font-mono text-xs text-ink-dim">{bulkProgress.done}/{bulkProgress.total}</span>
+                  <span className="font-mono text-sm text-ink-dim">{bulkProgress.done}/{bulkProgress.total}</span>
                 </div>
               )}
 
               <button
                 onClick={handleBulkImport}
                 disabled={bulkLoading || parsedIds.length === 0}
-                className="border border-gold text-gold font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-gold hover:text-canvas disabled:opacity-30 disabled:cursor-not-allowed transition-colors self-start"
+                className="border border-gold text-gold font-mono text-sm uppercase tracking-widest px-4 py-2 hover:bg-gold hover:text-canvas disabled:opacity-30 disabled:cursor-not-allowed transition-colors self-start"
               >
                 {bulkLoading ? "取得中..." : `取得 (${Math.min(parsedIds.length, PLAYER_COUNT)}人)`}
               </button>
@@ -309,7 +309,7 @@ export default function Home() {
 
       {/* トースト */}
       {toastMsg && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-surface border border-wire-bright text-ink px-5 py-3 text-xs font-mono z-50">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-surface border border-wire-bright text-ink px-5 py-3 text-sm font-mono z-50">
           {toastMsg}
         </div>
       )}
