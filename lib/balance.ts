@@ -2,203 +2,132 @@ import type { PlayerData, BalanceResult, Diagnostic, Role } from "@/types";
 import { calcTotalScore } from "./score";
 
 const ALL_ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
-
-// チーム合計差 vs 対面差 の重みバランス（0=合計のみ, 1=同等, 2=対面優先）
 const LANE_DIFF_WEIGHT = 0.6;
 
-// 希望ロール + できるロールを合わせた「担当可能なロール」一覧
 function getPlayableRoles(p: PlayerData): Role[] {
   return [...new Set([...p.preferredRoles, ...(p.canPlayRoles ?? [])])] as Role[];
 }
 
-function calcLaneDiffSum(
-  blue: Array<{ assignedRole?: Role; _score: number }>,
-  red: Array<{ assignedRole?: Role; _score: number }>
-): number {
-  let sum = 0;
-  for (const role of ALL_ROLES) {
-    const bp = blue.find((p) => p.assignedRole === role);
-    const rp = red.find((p) => p.assignedRole === role);
-    if (bp && rp) sum += Math.abs(bp._score - rp._score);
-  }
-  return sum;
-}
-
 export function balanceTeams(players: PlayerData[]): BalanceResult {
-  if (players.length !== 10) {
-    throw new Error("Players must be exactly 10");
-  }
+  if (players.length !== 10) throw new Error("Players must be exactly 10");
 
-  // Step 1: 各プレイヤーのtotalScoreを計算
   const scored = players.map((p) => ({ ...p, _score: calcTotalScore(p) }));
 
-  // Step 2: ロールグループ分け
-  // assignedRole > preferredRoles[0] の優先度でロールを決定
-  const roleGroups: Record<string, typeof scored> = {};
-  for (const role of ALL_ROLES) roleGroups[role] = [];
-  const unassigned: typeof scored = [];
-
-  for (const p of scored) {
-    const role = p.assignedRole ?? p.preferredRoles[0];
-    if (role && ALL_ROLES.includes(role as Role)) {
-      roleGroups[role].push(p);
-    } else {
-      unassigned.push(p);
-    }
+  // 担当可能なロール:
+  //   assignedRole 固定済み → そのロールのみ
+  //   希望/できるロールあり → その一覧
+  //   両方空 → 全ロール許可
+  function effectiveRoles(p: typeof scored[0]): Role[] {
+    if (p.assignedRole) return [p.assignedRole];
+    const roles = getPlayableRoles(p);
+    return roles.length > 0 ? roles : [...ALL_ROLES];
   }
 
-  // 同ロール希望者が多い場合は第2希望 → できるロール → 未割り当てで再分配
-  for (const role of ALL_ROLES) {
-    while (roleGroups[role].length > 2) {
-      // スコアが最も低いプレイヤーを移動
-      roleGroups[role].sort((a, b) => a._score - b._score);
-      const displaced = roleGroups[role].shift()!;
-      // 第2希望 → できるロールの順で空きを探す
-      const fallbacks = [
-        displaced.preferredRoles[1],
-        ...(displaced.canPlayRoles ?? []),
-      ].filter((r): r is Role => !!r && ALL_ROLES.includes(r as Role));
-      const altRole = fallbacks.find((r) => roleGroups[r].length < 2);
-      if (altRole) {
-        // 移動先ロールを assignedRole に記録しておく（Step3 で1人になった場合の fallback 用）
-        roleGroups[altRole].push({ ...displaced, assignedRole: altRole });
-      } else {
-        unassigned.push(displaced);
-      }
-    }
-  }
-
-  const blueTeam: typeof scored = [];
-  const redTeam: typeof scored = [];
-
-  // Step 3: ロールペアリング — 各ロールで上位2名をBlue/Red交互に割り当て
-  for (const role of ALL_ROLES) {
-    const group = roleGroups[role].sort((a, b) => b._score - a._score);
-    if (group.length >= 2) {
-      // スコアが高い方を現在合計スコアが低いチームへ（人数ではなくスコアで判定）
-      const blueScore = blueTeam.reduce((s, p) => s + p._score, 0);
-      const redScore = redTeam.reduce((s, p) => s + p._score, 0);
-      if (blueScore <= redScore) {
-        blueTeam.push({ ...group[0], assignedRole: role as Role });
-        redTeam.push({ ...group[1], assignedRole: role as Role });
-      } else {
-        redTeam.push({ ...group[0], assignedRole: role as Role });
-        blueTeam.push({ ...group[1], assignedRole: role as Role });
-      }
-    } else if (group.length === 1) {
-      unassigned.push(group[0]);
-    }
-  }
-
-  // Step 4: 残余プレイヤーをスコアの低いチームへ順次追加
-  unassigned.sort((a, b) => b._score - a._score);
-  for (const p of unassigned) {
-    const blueScore = blueTeam.reduce((s, x) => s + x._score, 0);
-    const redScore = redTeam.reduce((s, x) => s + x._score, 0);
-    const assignedRole = p.assignedRole ?? (p.preferredRoles[0] as Role | undefined);
-
-    if (blueTeam.length < 5 && blueScore <= redScore) {
-      blueTeam.push({ ...p, assignedRole });
-    } else if (redTeam.length < 5) {
-      redTeam.push({ ...p, assignedRole });
-    } else {
-      blueTeam.push({ ...p, assignedRole });
-    }
-  }
-
-  // Step 5: 最終調整（assignedRole が設定されていないプレイヤーのみ交換対象）
-  // スコア差が 5% 以内に収束するまで繰り返しスワップ
-  let blueScore = blueTeam.reduce((s, p) => s + p._score, 0);
-  let redScore = redTeam.reduce((s, p) => s + p._score, 0);
-  const total = blueScore + redScore;
-  const scoreDiffThreshold = total * 0.05; // 5%
-
-  const fixedRolePlayerIds = new Set(players.filter((p) => p.assignedRole).map((p) => p.id));
-
-  let currentLaneDiff = calcLaneDiffSum(blueTeam, redTeam);
-  const composite = (teamDiff: number, laneDiff: number) =>
-    teamDiff + LANE_DIFF_WEIGHT * laneDiff;
-
-  let improved = true;
-  while (improved && Math.abs(blueScore - redScore) > scoreDiffThreshold) {
-    improved = false;
-    let bestComposite = composite(Math.abs(blueScore - redScore), currentLaneDiff);
-    let bestSwap: [number, number] | null = null;
-
-    for (let bi = 0; bi < blueTeam.length; bi++) {
-      for (let ri = 0; ri < redTeam.length; ri++) {
-        // assignedRole が設定されたプレイヤーはロール固定のため除外
-        if (fixedRolePlayerIds.has(blueTeam[bi].id)) continue;
-        if (fixedRolePlayerIds.has(redTeam[ri].id)) continue;
-        // スワップ後に相手のロールを担当できるか確認（同一ロールは常にOK）
-        const sameRole = blueTeam[bi].assignedRole === redTeam[ri].assignedRole;
-        const bluePlayable = getPlayableRoles(blueTeam[bi]);
-        const redPlayable = getPlayableRoles(redTeam[ri]);
-        const blueCanPlay = sameRole || bluePlayable.includes(redTeam[ri].assignedRole as Role);
-        const redCanPlay = sameRole || redPlayable.includes(blueTeam[bi].assignedRole as Role);
-        if (!blueCanPlay || !redCanPlay) continue;
-
-        const newBlue = blueScore - blueTeam[bi]._score + redTeam[ri]._score;
-        const newRed = redScore - redTeam[ri]._score + blueTeam[bi]._score;
-
-        // スワップ後の対面差を計算（一時配列で評価）
-        // ロールはポジションに固定したままプレイヤーだけ交換する
-        const tmpBlue = [...blueTeam];
-        const tmpRed = [...redTeam];
-        tmpBlue[bi] = { ...redTeam[ri], assignedRole: blueTeam[bi].assignedRole };
-        tmpRed[ri] = { ...blueTeam[bi], assignedRole: redTeam[ri].assignedRole };
-        const newLaneDiff = calcLaneDiffSum(tmpBlue, tmpRed);
-
-        const newComposite = composite(Math.abs(newBlue - newRed), newLaneDiff);
-        if (newComposite < bestComposite) {
-          bestComposite = newComposite;
-          bestSwap = [bi, ri];
+  // 5人チームへの全ロール割り当てをバックトラックで列挙
+  // 各プレイヤーに重複なく5つのロールを割り当てる組み合わせを返す
+  function findAssignments(team: typeof scored): Role[][] {
+    const results: Role[][] = [];
+    function bt(index: number, used: Set<Role>, current: Role[]) {
+      if (index === 5) { results.push([...current]); return; }
+      for (const role of effectiveRoles(team[index])) {
+        if (!used.has(role)) {
+          used.add(role); current.push(role);
+          bt(index + 1, used, current);
+          current.pop(); used.delete(role);
         }
       }
     }
+    bt(0, new Set(), []);
+    return results;
+  }
 
-    if (bestSwap) {
-      const [bi, ri] = bestSwap;
-      // ロールはポジションに固定したまま、プレイヤーだけを交換する
-      const blueRole = blueTeam[bi].assignedRole;
-      const redRole = redTeam[ri].assignedRole;
-      const tmp = blueTeam[bi];
-      blueTeam[bi] = { ...redTeam[ri], assignedRole: blueRole };
-      redTeam[ri] = { ...tmp, assignedRole: redRole };
-      blueScore = blueTeam.reduce((s, p) => s + p._score, 0);
-      redScore = redTeam.reduce((s, p) => s + p._score, 0);
-      currentLaneDiff = calcLaneDiffSum(blueTeam, redTeam);
-      improved = true;
+  // C(10,5) = 252 通りの青チーム選択を列挙
+  const blueCombinations: number[][] = [];
+  function combo(start: number, chosen: number[]) {
+    if (chosen.length === 5) { blueCombinations.push([...chosen]); return; }
+    for (let i = start; i < 10; i++) {
+      chosen.push(i); combo(i + 1, chosen); chosen.pop();
+    }
+  }
+  combo(0, []);
+
+  let bestComposite = Infinity;
+  let bestBlue: typeof scored = [];
+  let bestRed: typeof scored = [];
+  let bestBlueRoles: Role[] = [];
+  let bestRedRoles: Role[] = [];
+
+  for (const blueIdx of blueCombinations) {
+    const blueSet = new Set(blueIdx);
+    const blueTeam = blueIdx.map((i) => scored[i]);
+    const redTeam = scored.filter((_, i) => !blueSet.has(i));
+
+    const blueAssignments = findAssignments(blueTeam);
+    if (blueAssignments.length === 0) continue;
+    const redAssignments = findAssignments(redTeam);
+    if (redAssignments.length === 0) continue;
+
+    const bTotal = blueTeam.reduce((s, p) => s + p._score, 0);
+    const rTotal = redTeam.reduce((s, p) => s + p._score, 0);
+    const teamDiff = Math.abs(bTotal - rTotal);
+
+    for (const bRoles of blueAssignments) {
+      for (const rRoles of redAssignments) {
+        let laneDiff = 0;
+        for (const role of ALL_ROLES) {
+          const bi = bRoles.indexOf(role);
+          const ri = rRoles.indexOf(role);
+          if (bi !== -1 && ri !== -1) {
+            laneDiff += Math.abs(blueTeam[bi]._score - redTeam[ri]._score);
+          }
+        }
+        const composite = teamDiff + LANE_DIFF_WEIGHT * laneDiff;
+        if (composite < bestComposite) {
+          bestComposite = composite;
+          bestBlue = blueTeam;
+          bestRed = redTeam;
+          bestBlueRoles = bRoles;
+          bestRedRoles = rRoles;
+        }
+      }
     }
   }
 
-  // Step 6: assignedRole の確定（未設定プレイヤーに effectiveRole を書き込む）
-  // 対面差を確定前のスコア付き配列で計算しておく
-  const laneDiffs: Partial<Record<Role, number>> = {};
-  for (const role of ALL_ROLES) {
-    const bp = blueTeam.find((p) => p.assignedRole === role);
-    const rp = redTeam.find((p) => p.assignedRole === role);
-    if (bp && rp) laneDiffs[role] = Math.round(Math.abs(bp._score - rp._score));
+  if (bestComposite === Infinity) {
+    throw new Error(
+      "チーム分け不可能: 全ロールを両チームに1人ずつ配置できる組み合わせがありません。" +
+      "プレイヤーの希望ロール・できるロールを見直してください。"
+    );
   }
 
-  const finalBlue: PlayerData[] = blueTeam.map(({ _score: _, ...p }) => ({
+  const finalBlue: PlayerData[] = bestBlue.map(({ _score: _, ...p }, i) => ({
     ...p,
-    assignedRole: p.assignedRole ?? (p.preferredRoles[0] as Role | undefined),
+    assignedRole: bestBlueRoles[i],
   }));
-  const finalRed: PlayerData[] = redTeam.map(({ _score: _, ...p }) => ({
+  const finalRed: PlayerData[] = bestRed.map(({ _score: _, ...p }, i) => ({
     ...p,
-    assignedRole: p.assignedRole ?? (p.preferredRoles[0] as Role | undefined),
+    assignedRole: bestRedRoles[i],
   }));
 
-  const diagnostics = generateDiagnostics(finalBlue, finalRed, blueScore, redScore, laneDiffs);
+  const bTotal = bestBlue.reduce((s, p) => s + p._score, 0);
+  const rTotal = bestRed.reduce((s, p) => s + p._score, 0);
+
+  const laneDiffs: Partial<Record<Role, number>> = {};
+  for (const role of ALL_ROLES) {
+    const bi = bestBlueRoles.indexOf(role);
+    const ri = bestRedRoles.indexOf(role);
+    if (bi !== -1 && ri !== -1) {
+      laneDiffs[role] = Math.round(Math.abs(bestBlue[bi]._score - bestRed[ri]._score));
+    }
+  }
 
   return {
     blueTeam: finalBlue,
     redTeam: finalRed,
-    blueScore: Math.round(blueScore),
-    redScore: Math.round(redScore),
-    scoreDiff: Math.round(Math.abs(blueScore - redScore)),
-    diagnostics,
+    blueScore: Math.round(bTotal),
+    redScore: Math.round(rTotal),
+    scoreDiff: Math.round(Math.abs(bTotal - rTotal)),
+    diagnostics: generateDiagnostics(finalBlue, finalRed, bTotal, rTotal, laneDiffs),
   };
 }
 
@@ -214,7 +143,6 @@ function generateDiagnostics(
   const diff = Math.abs(blueScore - redScore);
   const diffRatio = total > 0 ? diff / total : 0;
 
-  // ロール充足チェック
   for (const team of [
     { name: "blue" as const, players: blue },
     { name: "red" as const, players: red },
@@ -225,14 +153,9 @@ function generateDiagnostics(
     if (missingRoles.length === 0) {
       diags.push({ team: team.name, type: "ok", message: "全ロール揃い" });
     } else {
-      diags.push({
-        team: team.name,
-        type: "warn",
-        message: `${missingRoles.join("・")}なし`,
-      });
+      diags.push({ team: team.name, type: "warn", message: `${missingRoles.join("・")}なし` });
     }
 
-    // ムードチェック
     const avgMood = team.players.reduce((s, p) => s + p.mood, 0) / team.players.length;
     if (avgMood >= 2.0) {
       diags.push({ team: team.name, type: "ok", message: "チーム士気高め" });
@@ -240,7 +163,6 @@ function generateDiagnostics(
       diags.push({ team: team.name, type: "warn", message: "チーム士気低め" });
     }
 
-    // 貢献度チェック
     const avgContrib =
       team.players.reduce((s, p) => s + p.contributionScore.raw, 0) / team.players.length;
     if (avgContrib >= 60) {
@@ -248,23 +170,17 @@ function generateDiagnostics(
     }
   }
 
-  // スコアバランスチェック
   if (diffRatio <= 0.05) {
     diags.push({ team: "both", type: "ok", message: "バランス良好" });
   } else if (diffRatio > 0.15) {
     diags.push({ team: "both", type: "warn", message: "スコア差大きめ" });
   }
 
-  // 対面差チェック（各ロールの実力差が大きいレーンを警告）
   const LANE_WARN_THRESHOLD = 20;
   for (const role of ALL_ROLES) {
-    const diff = laneDiffs[role];
-    if (diff !== undefined && diff > LANE_WARN_THRESHOLD) {
-      diags.push({
-        team: "both",
-        type: "warn",
-        message: `${role}レーンの実力差大（${diff}pt）`,
-      });
+    const d = laneDiffs[role];
+    if (d !== undefined && d > LANE_WARN_THRESHOLD) {
+      diags.push({ team: "both", type: "warn", message: `${role}レーンの実力差大（${d}pt）` });
     }
   }
 
