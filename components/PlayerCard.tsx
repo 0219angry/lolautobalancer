@@ -34,6 +34,29 @@ interface Props {
   preloadedData?: PlayerData | null;
 }
 
+function TagList({ tags }: { tags: string[] }) {
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  return (
+    <div className="flex flex-wrap gap-1 pt-0.5 border-t border-wire">
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className="relative font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5 cursor-default"
+          onMouseEnter={() => setActiveTag(tag)}
+          onMouseLeave={() => setActiveTag(null)}
+        >
+          {tag}
+          {activeTag === tag && TAG_DESCRIPTIONS[tag] && (
+            <span className="absolute bottom-full left-0 mb-1 z-20 whitespace-nowrap max-w-56 bg-[#1a1f2e] border border-wire-bright text-ink text-xs px-2 py-1 pointer-events-none" style={{ whiteSpace: "normal", width: "13rem" }}>
+              {TAG_DESCRIPTIONS[tag]}
+            </span>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function PlayerCard({ index, onDataChange, preloadedData }: Props) {
   const [riotId, setRiotId] = useState("");
   const [cachedIds, setCachedIds] = useState<string[]>([]);
@@ -372,22 +395,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
 
           {/* 自動タグ */}
           {(playerData.autoTags?.length ?? 0) > 0 && (
-            <div className="flex flex-wrap gap-1 pt-0.5 border-t border-wire">
-              {playerData.autoTags!.map((tag) => (
-                <span
-                  key={tag}
-                  title={TAG_DESCRIPTIONS[tag]}
-                  className="relative group font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5 cursor-default"
-                >
-                  {tag}
-                  {TAG_DESCRIPTIONS[tag] && (
-                    <span className="pointer-events-none absolute bottom-full left-0 mb-1 w-max max-w-48 bg-raised border border-wire text-ink text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-normal">
-                      {TAG_DESCRIPTIONS[tag]}
-                    </span>
-                  )}
-                </span>
-              ))}
-            </div>
+            <TagList tags={playerData.autoTags!} />
           )}
         </div>
       )}
