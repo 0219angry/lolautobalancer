@@ -7,7 +7,6 @@ import TeamResult from "@/components/TeamResult";
 import { fetchPlayerData } from "@/lib/fetchPlayer";
 import { useCopyImage } from "@/lib/useCopyImage";
 import { useToast } from "@/lib/useToast";
-
 const PLAYER_COUNT = 10;
 
 export default function Home() {
