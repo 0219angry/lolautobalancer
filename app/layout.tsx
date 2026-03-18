@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
+import Footer from "@/components/Footer";
 
 const grotesk = Space_Grotesk({
   variable: "--font-grotesk",
@@ -28,6 +29,7 @@ export default function RootLayout({
     <html lang="ja">
       <body className={`${grotesk.variable} ${mono.variable} font-sans antialiased bg-canvas text-ink`}>
         {children}
+        <Footer />
       </body>
     </html>
   );
