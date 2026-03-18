@@ -239,13 +239,16 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
                   ロビーチャットをそのままペーストできます。参加/退出ログから現在の参加者を自動判定します。
                 </p>
               </div>
-              <textarea
-                value={bulkText}
-                onChange={(e) => setBulkText(e.target.value)}
-                placeholder={"TsuyukusaYu#M893がロビーに参加しました\nPlayer2#JP1がロビーに参加しました\nPlayer2#JP1がロビーから退出しました\n\n[All] Player3#JP1: よろしく"}
-                rows={6}
-                className="bg-raised border border-wire text-ink text-sm font-mono px-3 py-2 placeholder-ink-muted focus:outline-none focus:border-wire-bright resize-y w-full"
-              />
+              <div className="flex flex-col gap-1">
+                <p className="font-mono text-xs text-ink-muted uppercase tracking-widest">入力例</p>
+                <textarea
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  placeholder={"Player1#JP1がロビーに参加しました\nPlayer2#JP1がロビーに参加しました\nPlayer2#JP1がロビーから退出しました\n\n[All] Player3#JP1: よろしく"}
+                  rows={6}
+                  className="bg-raised border border-wire text-ink text-sm font-mono px-3 py-2 placeholder-ink-muted focus:outline-none focus:border-wire-bright resize-y w-full"
+                />
+              </div>
 
               {/* 抽出プレビュー */}
               {parsedIds.length > 0 && (
