@@ -36,23 +36,28 @@ interface Props {
 
 function TagList({ tags }: { tags: string[] }) {
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const desc = activeTag ? TAG_DESCRIPTIONS[activeTag] : null;
   return (
-    <div className="flex flex-wrap gap-1 pt-0.5 border-t border-wire">
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          className="relative font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5 cursor-default"
-          onMouseEnter={() => setActiveTag(tag)}
-          onMouseLeave={() => setActiveTag(null)}
-        >
-          {tag}
-          {activeTag === tag && TAG_DESCRIPTIONS[tag] && (
-            <span className="absolute bottom-full left-0 mb-1 z-20 whitespace-nowrap max-w-56 bg-[#1a1f2e] border border-wire-bright text-ink text-xs px-2 py-1 pointer-events-none" style={{ whiteSpace: "normal", width: "13rem" }}>
-              {TAG_DESCRIPTIONS[tag]}
-            </span>
-          )}
-        </span>
-      ))}
+    <div className="flex flex-col gap-1 pt-0.5 border-t border-wire">
+      <div className="flex flex-wrap gap-1">
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className={`font-mono text-xs border px-1.5 py-0.5 cursor-default transition-colors ${
+              activeTag === tag
+                ? "border-gold text-gold"
+                : "border-gold/50 text-gold/70"
+            }`}
+            onMouseEnter={() => setActiveTag(tag)}
+            onMouseLeave={() => setActiveTag(null)}
+          >
+            {tag}
+          </span>
+        ))}
+      </div>
+      {desc && (
+        <p className="font-mono text-xs text-ink-dim leading-relaxed">{desc}</p>
+      )}
     </div>
   );
 }
