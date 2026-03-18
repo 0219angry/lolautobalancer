@@ -60,7 +60,8 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
       ].filter((r): r is Role => !!r && ALL_ROLES.includes(r as Role));
       const altRole = fallbacks.find((r) => roleGroups[r].length < 2);
       if (altRole) {
-        roleGroups[altRole].push(displaced);
+        // 移動先ロールを assignedRole に記録しておく（Step3 で1人になった場合の fallback 用）
+        roleGroups[altRole].push({ ...displaced, assignedRole: altRole });
       } else {
         unassigned.push(displaced);
       }
@@ -141,10 +142,11 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
         const newRed = redScore - redTeam[ri]._score + blueTeam[bi]._score;
 
         // スワップ後の対面差を計算（一時配列で評価）
+        // ロールはポジションに固定したままプレイヤーだけ交換する
         const tmpBlue = [...blueTeam];
         const tmpRed = [...redTeam];
-        tmpBlue[bi] = redTeam[ri];
-        tmpRed[ri] = blueTeam[bi];
+        tmpBlue[bi] = { ...redTeam[ri], assignedRole: blueTeam[bi].assignedRole };
+        tmpRed[ri] = { ...blueTeam[bi], assignedRole: redTeam[ri].assignedRole };
         const newLaneDiff = calcLaneDiffSum(tmpBlue, tmpRed);
 
         const newComposite = composite(Math.abs(newBlue - newRed), newLaneDiff);
@@ -157,9 +159,12 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
 
     if (bestSwap) {
       const [bi, ri] = bestSwap;
+      // ロールはポジションに固定したまま、プレイヤーだけを交換する
+      const blueRole = blueTeam[bi].assignedRole;
+      const redRole = redTeam[ri].assignedRole;
       const tmp = blueTeam[bi];
-      blueTeam[bi] = redTeam[ri];
-      redTeam[ri] = tmp;
+      blueTeam[bi] = { ...redTeam[ri], assignedRole: blueRole };
+      redTeam[ri] = { ...tmp, assignedRole: redRole };
       blueScore = blueTeam.reduce((s, p) => s + p._score, 0);
       redScore = redTeam.reduce((s, p) => s + p._score, 0);
       currentLaneDiff = calcLaneDiffSum(blueTeam, redTeam);
