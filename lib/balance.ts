@@ -94,18 +94,20 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
   }
 
   if (bestComposite === Infinity) {
-    // 各ロールに対してプレイ可能なプレイヤー数を集計してボトルネックを特定
-    const roleCount: Partial<Record<Role, number>> = {};
+    // 各ロールに対してプレイ可能なプレイヤー数・プレイヤー名を集計してボトルネックを特定
+    const lines: string[] = [];
     for (const role of ALL_ROLES) {
-      roleCount[role] = scored.filter((p) => effectiveRoles(p).includes(role)).length;
+      const canPlay = scored.filter((p) => effectiveRoles(p).includes(role));
+      if (canPlay.length < 2) {
+        const names = canPlay.map((p) => p.summonerName).join("、") || "なし";
+        lines.push(`${role}（${canPlay.length}人: ${names}）`);
+      }
     }
-    const bottleneck = ALL_ROLES.filter((r) => (roleCount[r] ?? 0) < 2);
-    const hint = bottleneck.length > 0
-      ? `（${bottleneck.join("・")}ができる人が不足）`
+    const detail = lines.length > 0
+      ? `\n不足ロール:\n${lines.map((l) => `  • ${l}`).join("\n")}`
       : "";
     throw new Error(
-      `チーム分け不可能: 全ロールを両チームに1人ずつ配置できる組み合わせがありません${hint}。` +
-      "プレイヤーの希望ロール・できるロールを見直してください。"
+      `チーム分け不可能: 全ロールを両チームに1人ずつ配置できる組み合わせがありません。${detail}\nプレイヤーの希望ロール・できるロールを見直してください。`
     );
   }
 
