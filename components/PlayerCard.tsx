@@ -35,23 +35,48 @@ interface Props {
 }
 
 function TagList({ tags }: { tags: string[] }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="flex flex-col gap-1 pt-0.5 border-t border-wire">
-      {tags.map((tag) => (
-        TAG_DESCRIPTIONS[tag] ? (
-          <details key={tag} className="group">
-            <summary className="font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5 w-fit list-none cursor-pointer select-none hover:border-gold transition-colors">
-              {tag}
-            </summary>
-            <p className="font-mono text-xs text-ink-dim mt-1 leading-relaxed">{TAG_DESCRIPTIONS[tag]}</p>
-          </details>
-        ) : (
-          <span key={tag} className="font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5 w-fit">
+    <>
+      <div className="flex flex-wrap items-center gap-1 pt-0.5 border-t border-wire">
+        {tags.map((tag) => (
+          <span key={tag} className="font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5">
             {tag}
           </span>
-        )
-      ))}
-    </div>
+        ))}
+        <button
+          onClick={() => setOpen(true)}
+          className="font-mono text-xs text-ink-muted border border-wire px-1.5 py-0.5 hover:text-ink hover:border-wire-bright transition-colors"
+        >
+          ?
+        </button>
+      </div>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-surface border border-wire-bright w-80 max-w-[90vw] p-5 flex flex-col gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Auto Tags</span>
+              <button onClick={() => setOpen(false)} className="text-ink-muted hover:text-ink transition-colors text-sm">✕</button>
+            </div>
+            <div className="flex flex-col gap-2.5">
+              {Object.entries(TAG_DESCRIPTIONS).map(([tag, desc]) => (
+                <div key={tag} className="flex flex-col gap-0.5">
+                  <span className="font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5 w-fit">{tag}</span>
+                  <p className="font-mono text-xs text-ink-dim leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
