@@ -81,6 +81,7 @@ export async function fetchPlayerData(riotId: string, index: number, skipCache =
     rank: sumData.rank,
     lp: sumData.lp,
     preferredRoles,
+    canPlayRoles: [],
     roleStats,
     contributionScore,
     mood: 1,

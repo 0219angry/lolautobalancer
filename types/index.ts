@@ -23,6 +23,7 @@ export interface PlayerInput {
   riotId: string; // "PlayerName#JP1" 形式
   mood: Mood;
   preferredRoles: Role[]; // 希望ロール（第1・第2希望、最大2件）
+  canPlayRoles: Role[]; // できるロール（希望以外でも対応可能なロール）
 }
 
 // ロール別スタッツ（直近20試合から算出）
@@ -53,6 +54,7 @@ export interface PlayerData {
   rank: string; // "I" | "II" | "III" | "IV"
   lp: number;
   preferredRoles: Role[]; // 希望ロール（手動入力）または履歴から算出した得意ロール
+  canPlayRoles: Role[]; // できるロール（希望以外でも対応可能なロール）
   roleStats: RoleStats;
   contributionScore: ContributionScore;
   mood: Mood;

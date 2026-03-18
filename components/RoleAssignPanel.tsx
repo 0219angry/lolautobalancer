@@ -18,9 +18,15 @@ export default function RoleAssignPanel({ team, teamColor, onRoleChange }: Props
   const assignedRoles = team.map((p) => p.assignedRole).filter(Boolean) as Role[];
   const duplicates = assignedRoles.filter((r, i) => assignedRoles.indexOf(r) !== i);
 
+  const sorted = [...team].sort((a, b) => {
+    const ai = ROLES.indexOf(a.assignedRole as Role);
+    const bi = ROLES.indexOf(b.assignedRole as Role);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
   return (
     <div className="flex flex-col divide-y divide-wire">
-      {team.map((player) => {
+      {sorted.map((player) => {
         const isDuplicate = player.assignedRole && duplicates.includes(player.assignedRole);
         const rowBg = teamColor === "blue" ? "bg-azure-dim" : "bg-crimson-dim";
 
