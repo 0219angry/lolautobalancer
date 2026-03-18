@@ -58,7 +58,7 @@ export function calcRankScore(tier: Tier, rank: string, lp: number): number {
   const rankBonus: Record<string, number> = { IV: 0, III: 2, II: 4, I: 6 };
   const rankAdj = rankBonus[rank] ?? 0;
   const lpMultiplier = HIGH_TIER.includes(tier) ? 6 : 4;
-  const lpBonus = Math.floor((lp / 100) * lpMultiplier);
+  const lpBonus = (lp / 100) * lpMultiplier;
   return base + rankAdj + lpBonus;
 }
 

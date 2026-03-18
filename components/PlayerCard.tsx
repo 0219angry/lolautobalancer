@@ -132,8 +132,12 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
       onDataChange(index, data);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "取得失敗";
-      setError(msg);
-      setManualMode(true);
+      if (msg === "RATE_LIMIT") {
+        setError("API上限に達しました。約2分後に再試行してください");
+      } else {
+        setError(msg);
+        setManualMode(true);
+      }
     } finally {
       setLoading(false);
     }
