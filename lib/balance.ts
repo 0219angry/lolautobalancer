@@ -99,6 +99,8 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
         // assignedRole が設定されたプレイヤーはロール固定のため除外
         if (fixedRolePlayerIds.has(blueTeam[bi].id)) continue;
         if (fixedRolePlayerIds.has(redTeam[ri].id)) continue;
+        // 異なるロール同士のスワップは対面を崩すため除外
+        if (blueTeam[bi].assignedRole !== redTeam[ri].assignedRole) continue;
 
         const newBlue = blueScore - blueTeam[bi]._score + redTeam[ri]._score;
         const newRed = redScore - redTeam[ri]._score + blueTeam[bi]._score;
