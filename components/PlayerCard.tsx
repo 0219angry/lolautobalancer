@@ -38,25 +38,28 @@ function TagList({ tags }: { tags: string[] }) {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const desc = activeTag ? TAG_DESCRIPTIONS[activeTag] : null;
   return (
-    <div className="flex flex-col gap-1 pt-0.5 border-t border-wire">
-      <div className="flex flex-wrap gap-1">
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 4, borderTop: "1px solid #2a2f3a" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
         {tags.map((tag) => (
           <span
             key={tag}
-            className={`font-mono text-xs border px-1.5 py-0.5 cursor-default select-none transition-colors ${
-              activeTag === tag
-                ? "border-gold text-gold"
-                : "border-gold/50 text-gold/70"
-            }`}
-            onMouseEnter={() => setActiveTag(tag)}
-            onMouseLeave={() => setActiveTag(null)}
+            onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+            style={{
+              fontFamily: "monospace",
+              fontSize: 11,
+              border: activeTag === tag ? "1px solid #c89b3c" : "1px solid rgba(200,155,60,0.5)",
+              color: activeTag === tag ? "#c89b3c" : "rgba(200,155,60,0.7)",
+              padding: "1px 6px",
+              cursor: "pointer",
+              userSelect: "none",
+            }}
           >
             {tag}
           </span>
         ))}
       </div>
       {desc && (
-        <p className="font-mono text-xs text-ink-dim leading-relaxed">{desc}</p>
+        <p style={{ fontFamily: "monospace", fontSize: 11, color: "#8a9ab5", lineHeight: 1.5, margin: 0 }}>{desc}</p>
       )}
     </div>
   );
