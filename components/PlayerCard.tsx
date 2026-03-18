@@ -1,9 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { PlayerInput, PlayerData, Mood, Role, Tier } from "@/types";
 import { fetchPlayerData } from "@/lib/fetchPlayer";
-import { getCacheAgeMin } from "@/lib/playerCache";
+import { getCacheAgeMin, getCachedIds } from "@/lib/playerCache";
+
+const TAG_DESCRIPTIONS: Record<string, string> = {
+  ハイランク: "マスター以上のランク帯",
+  ビジョン型: "平均ビジョンスコア40以上の視界管理が得意なプレイヤー",
+  集団戦型: "チームファイト参加率65%以上の集団戦貢献が高いプレイヤー",
+  高貢献: "総合貢献スコアが70以上の高サポート力",
+  安定型: "第1希望ロールで勝率60%以上（5試合以上）",
+  高KDA: "第1希望ロールで平均KDA4.0以上",
+  CS型: "第1希望ロールで平均CS/分7.0以上のファームが得意なプレイヤー",
+};
 
 const ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
 const ROLE_SHORT: Record<Role, string> = {
@@ -26,6 +36,7 @@ interface Props {
 
 export default function PlayerCard({ index, onDataChange, preloadedData }: Props) {
   const [riotId, setRiotId] = useState("");
+  const cachedIds = useMemo(() => getCachedIds(), []);
   const [mood, setMood] = useState<Mood>(1);
   const [preferredRoles, setPreferredRoles] = useState<(Role | null)[]>([null, null]);
   const [canPlayRoles, setCanPlayRoles] = useState<Role[]>([]);
@@ -165,6 +176,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
         </span>
         <input
           type="text"
+          list={`cached-ids-${index}`}
           value={riotId}
           onChange={(e) => setRiotId(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && fetchPlayer()}
@@ -173,6 +185,11 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
           disabled={loading}
           className="flex-1 bg-transparent text-ink text-sm font-mono font-medium placeholder-ink-muted focus:outline-none min-w-0"
         />
+        {cachedIds.length > 0 && (
+          <datalist id={`cached-ids-${index}`}>
+            {cachedIds.map((id) => <option key={id} value={id} />)}
+          </datalist>
+        )}
         {playerData ? (
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {(() => {
@@ -356,8 +373,17 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
           {(playerData.autoTags?.length ?? 0) > 0 && (
             <div className="flex flex-wrap gap-1 pt-0.5 border-t border-wire">
               {playerData.autoTags!.map((tag) => (
-                <span key={tag} className="font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5">
+                <span
+                  key={tag}
+                  title={TAG_DESCRIPTIONS[tag]}
+                  className="relative group font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5 cursor-default"
+                >
                   {tag}
+                  {TAG_DESCRIPTIONS[tag] && (
+                    <span className="pointer-events-none absolute bottom-full left-0 mb-1 w-max max-w-48 bg-raised border border-wire text-ink text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-normal">
+                      {TAG_DESCRIPTIONS[tag]}
+                    </span>
+                  )}
                 </span>
               ))}
             </div>
