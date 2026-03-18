@@ -9,7 +9,7 @@ import { useToast } from "@/lib/useToast";
 
 const ALL_ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
 const MOOD_LABELS = ["疲れ気味", "普通", "好調", "絶好調"];
-const MOOD_MULT = [0.75, 1.0, 1.15, 1.3];
+const MOOD_MULT = [0.85, 1.0, 1.08, 1.15];
 const ROLE_SHORT: Record<string, string> = {
   TOP: "TOP", JUNGLE: "JGL", MID: "MID", BOT: "BOT", SUPPORT: "SUP",
 };
@@ -20,67 +20,119 @@ const TIER_COLOR: Record<string, string> = {
   CHALLENGER: "text-gold-bright",
 };
 
-function calcScores(player: PlayerData) {
-  const rankScore = calcRankScore(player.tier, player.rank, player.lp);
-  const role = player.assignedRole ?? player.preferredRoles[0];
-  const roleScore = role ? calcRoleScore(player, role) : rankScore * 0.8;
-  const contribRaw = player.contributionScore.raw;
-  const moodMult = MOOD_MULT[player.mood];
-  const rankComponent = rankScore * 0.4;
-  const roleComponent = roleScore * 0.35;
-  const contribComponent = contribRaw * 0.25;
-  const total = calcTotalScore(player);
-  return { rankComponent, roleComponent, contribComponent, moodMult, total };
+// ロール別重み定義（score.ts と同期）
+const ROLE_WEIGHTS: Record<string, { winRate: number; kda: number; cs: number; reliability: number }> = {
+  JUNGLE:  { winRate: 40, kda: 35, cs: 15, reliability: 10 },
+  SUPPORT: { winRate: 45, kda: 35, cs: 0,  reliability: 20 },
+  DEFAULT: { winRate: 40, kda: 30, cs: 20, reliability: 10 },
+};
+function getRoleWeights(role: string) {
+  return ROLE_WEIGHTS[role] ?? ROLE_WEIGHTS.DEFAULT;
 }
 
-// 左右の値を比較して勝ち負けのスタイルを返す
+interface DetailedScores {
+  rankScore: number;
+  rankBase: number;
+  rankBonus: number;
+  rankLpBonus: number;
+  roleScore: number;
+  roleWinRate: number;
+  roleKda: number;
+  roleCs: number;
+  roleReliability: number;
+  roleGames: number;
+  roleFallback: boolean;
+  contribRaw: number;
+  contribVision: number;
+  contribTeamFight: number;
+  contribControlWards: number;
+  moodMult: number;
+  total: number;
+}
+
+function calcDetailed(player: PlayerData): DetailedScores {
+  const rankScore = calcRankScore(player.tier, player.rank, player.lp);
+  const TIER_BASE: Record<string, number> = {
+    IRON: 10, BRONZE: 20, SILVER: 30, GOLD: 40, PLATINUM: 50,
+    EMERALD: 60, DIAMOND: 70, MASTER: 85, GRANDMASTER: 92, CHALLENGER: 100,
+  };
+  const rankBonus: Record<string, number> = { IV: 0, III: 2, II: 4, I: 6 };
+  const HIGH_TIER = ["MASTER", "GRANDMASTER", "CHALLENGER"];
+  const rankBase = TIER_BASE[player.tier] ?? 0;
+  const rankBonusVal = rankBonus[player.rank] ?? 0;
+  const lpMultiplier = HIGH_TIER.includes(player.tier) ? 6 : 4;
+  const rankLpBonus = Math.floor((player.lp / 100) * lpMultiplier);
+
+  const role = player.assignedRole ?? player.preferredRoles[0];
+  const stats = role ? player.roleStats[role] : undefined;
+  const roleScore = role ? calcRoleScore(player, role) : rankScore * 0.8;
+  const roleFallback = !stats || (stats?.games ?? 0) < 3;
+
+  let roleWinRate = 0, roleKda = 0, roleCs = 0, roleReliability = 0;
+  if (!roleFallback && stats && role) {
+    const w = getRoleWeights(role);
+    const KDA_NORM = 5, CS_NORM = 7, GAMES_CAP = 20;
+    roleWinRate = stats.winRate * w.winRate;
+    roleKda = Math.min(stats.avgKDA / KDA_NORM, 1) * w.kda;
+    roleCs = Math.min(stats.avgCSperMin / CS_NORM, 1) * w.cs;
+    roleReliability = (Math.log(stats.games + 1) / Math.log(GAMES_CAP + 1)) * w.reliability;
+  }
+
+  const moodMult = MOOD_MULT[player.mood] ?? 1.0;
+  const total = calcTotalScore(player);
+
+  return {
+    rankScore, rankBase, rankBonus: rankBonusVal, rankLpBonus,
+    roleScore, roleWinRate, roleKda, roleCs, roleReliability,
+    roleGames: stats?.games ?? 0, roleFallback,
+    contribRaw: player.contributionScore.raw,
+    contribVision: player.contributionScore.visionScore,
+    contribTeamFight: player.contributionScore.teamFightParticipation,
+    contribControlWards: player.contributionScore.controlWardsBought,
+    moodMult, total,
+  };
+}
+
 function cmp(a: number, b: number): { a: string; b: string } {
   if (Math.abs(a - b) < 0.5) return { a: "text-ink", b: "text-ink" };
   return a > b
-    ? { a: "text-azure font-bold", b: "text-ink-dim" }
-    : { a: "text-ink-dim", b: "text-crimson font-bold" };
+    ? { a: "text-azure font-bold", b: "text-crimson" }
+    : { a: "text-crimson", b: "text-azure font-bold" };
 }
 
-function StatRow({
-  label,
-  blueVal,
-  redVal,
-  fmt = (v: number) => v.toFixed(1),
-  showBar = false,
-}: {
-  label: string;
-  blueVal: number;
-  redVal: number;
-  fmt?: (v: number) => string;
-  showBar?: boolean;
+function Row({ label, bv, rv, fmt = (v: number) => v.toFixed(1), indent = false }: {
+  label: string; bv: number; rv: number;
+  fmt?: (v: number) => string; indent?: boolean;
 }) {
-  const { a, b } = cmp(blueVal, redVal);
-  const total = blueVal + redVal;
-  const bluePct = total > 0 ? (blueVal / total) * 100 : 50;
-  const redPct = 100 - bluePct;
+  const { a, b } = cmp(bv, rv);
   return (
-    <div className="flex items-center gap-3 py-1.5">
-      <span className={`font-mono text-sm w-20 text-right ${a}`}>{fmt(blueVal)}</span>
-      <div className="flex-1 flex flex-col gap-1">
-        <span className="font-mono text-xs text-ink-muted text-center">{label}</span>
-        {showBar && (
-          <div className="flex h-1.5">
-            <div className="bg-azure h-full transition-all duration-500" style={{ width: `${bluePct}%` }} />
-            <div className="bg-crimson h-full transition-all duration-500" style={{ width: `${redPct}%` }} />
-          </div>
-        )}
-      </div>
-      <span className={`font-mono text-sm w-20 ${b}`}>{fmt(redVal)}</span>
+    <div className={`flex items-center gap-2 py-0.5 ${indent ? "pl-3 border-l border-wire" : ""}`}>
+      <span className={`font-mono text-sm w-24 text-right tabular-nums ${a}`}>{fmt(bv)}</span>
+      <span className={`flex-1 font-mono text-xs text-center ${indent ? "text-ink-muted" : "text-ink-dim"}`}>{label}</span>
+      <span className={`font-mono text-sm w-24 tabular-nums ${b}`}>{fmt(rv)}</span>
+    </div>
+  );
+}
+
+function ScoreBar({ bv, rv }: { bv: number; rv: number }) {
+  const total = bv + rv;
+  const bluePct = total > 0 ? (bv / total) * 100 : 50;
+  return (
+    <div className="flex h-1 my-1">
+      <div className="bg-azure transition-all duration-500" style={{ width: `${bluePct}%` }} />
+      <div className="bg-crimson transition-all duration-500" style={{ width: `${100 - bluePct}%` }} />
     </div>
   );
 }
 
 function LaneMatchup({ blue, red }: { blue: PlayerData; red: PlayerData }) {
-  const bs = calcScores(blue);
-  const rs = calcScores(red);
-  const scoreDiff = Math.abs(bs.total - rs.total);
+  const [open, setOpen] = useState(false);
+  const bs = calcDetailed(blue);
+  const rs = calcDetailed(red);
   const role = blue.assignedRole ?? blue.preferredRoles[0];
-
+  const blueStats = role ? blue.roleStats[role] : undefined;
+  const redStats = role ? red.roleStats[role] : undefined;
+  const scoreDiff = Math.abs(bs.total - rs.total);
   const blueRole = role ? blue.roleStats[role] : undefined;
   const redRole = role ? red.roleStats[role] : undefined;
 
@@ -94,11 +146,16 @@ function LaneMatchup({ blue, red }: { blue: PlayerData; red: PlayerData }) {
         <span className={`font-mono text-xs ${scoreDiff <= 5 ? "text-emerald-400" : scoreDiff <= 15 ? "text-gold" : "text-crimson"}`}>
           差 {scoreDiff.toFixed(1)}pt
         </span>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="font-mono text-xs text-ink-muted border border-wire px-2 py-0.5 hover:border-wire-bright hover:text-ink transition-colors"
+        >
+          {open ? "▲ 詳細" : "▼ 詳細"}
+        </button>
       </div>
 
       {/* プレイヤー名・ランク行 */}
       <div className="grid grid-cols-2 gap-px bg-wire">
-        {/* Blue */}
         <div className="bg-surface px-4 py-3 border-l-2 border-l-azure">
           <p className="font-semibold text-ink text-sm truncate">{blue.summonerName}</p>
           <p className={`font-mono text-xs ${TIER_COLOR[blue.tier] ?? "text-ink"}`}>
@@ -106,7 +163,6 @@ function LaneMatchup({ blue, red }: { blue: PlayerData; red: PlayerData }) {
           </p>
           <p className="font-mono text-xs text-ink-muted mt-0.5">{MOOD_LABELS[blue.mood]}</p>
         </div>
-        {/* Red */}
         <div className="bg-surface px-4 py-3 border-l-2 border-l-crimson">
           <p className="font-semibold text-ink text-sm truncate">{red.summonerName}</p>
           <p className={`font-mono text-xs ${TIER_COLOR[red.tier] ?? "text-ink"}`}>
@@ -116,37 +172,104 @@ function LaneMatchup({ blue, red }: { blue: PlayerData; red: PlayerData }) {
         </div>
       </div>
 
-      {/* スコア比較 */}
+      {/* スコアサマリー */}
       <div className="px-4 py-3 border-t border-wire">
-        <StatRow label="Total Score" blueVal={bs.total} redVal={rs.total} showBar />
-        <StatRow label="Rank" blueVal={bs.rankComponent} redVal={rs.rankComponent} />
-        <StatRow label="Role" blueVal={bs.roleComponent} redVal={rs.roleComponent} />
-        <StatRow label="Contrib" blueVal={bs.contribComponent} redVal={rs.contribComponent} />
-
-        {/* ロール別スタッツ（履歴あれば） */}
-        {(blueRole || redRole) && (
-          <>
-            <div className="border-t border-wire mt-2 pt-2">
-              <StatRow
-                label="勝率"
-                blueVal={(blueRole?.winRate ?? 0) * 100}
-                redVal={(redRole?.winRate ?? 0) * 100}
-                fmt={(v) => `${v.toFixed(0)}%`}
-              />
-              <StatRow
-                label="KDA"
-                blueVal={blueRole?.avgKDA ?? 0}
-                redVal={redRole?.avgKDA ?? 0}
-              />
-              <StatRow
-                label="CS/m"
-                blueVal={blueRole?.avgCSperMin ?? 0}
-                redVal={redRole?.avgCSperMin ?? 0}
-              />
-            </div>
-          </>
-        )}
+        <Row label="Total Score" bv={bs.total} rv={rs.total} />
+        <ScoreBar bv={bs.total} rv={rs.total} />
       </div>
+
+      {/* 詳細展開 */}
+      {open && (
+        <div className="px-4 pb-4 flex flex-col gap-4 border-t border-wire pt-3">
+
+          {/* ランクスコア */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Rank Score</span>
+              <span className="font-mono text-xs text-ink-muted">× 0.40</span>
+            </div>
+            <Row label="Rank Score" bv={bs.rankScore} rv={rs.rankScore} />
+            <Row label="ティア基礎値" bv={bs.rankBase} rv={rs.rankBase} indent />
+            <Row label="ランクボーナス" bv={bs.rankBonus} rv={rs.rankBonus} indent />
+            <Row label="LPボーナス" bv={bs.rankLpBonus} rv={rs.rankLpBonus} indent />
+          </div>
+
+          {/* ロールスコア */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Role Score</span>
+              <span className="font-mono text-xs text-ink-muted">× 0.35</span>
+              {role && <span className="font-mono text-xs text-gold">{ROLE_SHORT[role]}</span>}
+            </div>
+            <Row label="Role Score" bv={bs.roleScore} rv={rs.roleScore} />
+            {(bs.roleFallback || rs.roleFallback) && (
+              <p className="font-mono text-xs text-ink-muted pl-3 mt-0.5">
+                {bs.roleFallback && `Blue: 履歴不足（${bs.roleGames}戦）→ランク×0.8`}
+                {bs.roleFallback && rs.roleFallback && " / "}
+                {rs.roleFallback && `Red: 履歴不足（${rs.roleGames}戦）→ランク×0.8`}
+              </p>
+            )}
+            {!bs.roleFallback || !rs.roleFallback ? (
+              <>
+                {role && (() => {
+                  const w = getRoleWeights(role);
+                  return (
+                    <>
+                      <Row label={`勝率 (${w.winRate}%重み)`} bv={bs.roleWinRate} rv={rs.roleWinRate} indent
+                        fmt={(v) => v.toFixed(1)} />
+                      <Row label={`KDA (${w.kda}%重み)`} bv={bs.roleKda} rv={rs.roleKda} indent />
+                      {w.cs > 0 && <Row label={`CS/分 (${w.cs}%重み)`} bv={bs.roleCs} rv={rs.roleCs} indent />}
+                      <Row label={`試合数 (${w.reliability}%重み)`} bv={bs.roleReliability} rv={rs.roleReliability} indent />
+                    </>
+                  );
+                })()}
+                {/* 生スタッツ */}
+                {(blueStats || redStats) && (
+                  <div className="mt-2 pt-2 border-t border-wire flex flex-col gap-0.5">
+                    <p className="font-mono text-xs text-ink-muted mb-1">生スタッツ（{blueStats?.games ?? 0} / {redStats?.games ?? 0} 戦）</p>
+                    <Row label="勝率" bv={(blueStats?.winRate ?? 0) * 100} rv={(redStats?.winRate ?? 0) * 100}
+                      fmt={(v) => `${v.toFixed(0)}%`} indent />
+                    <Row label="KDA" bv={blueStats?.avgKDA ?? 0} rv={redStats?.avgKDA ?? 0} indent />
+                    <Row label="CS/分" bv={blueStats?.avgCSperMin ?? 0} rv={redStats?.avgCSperMin ?? 0} indent />
+                  </div>
+                )}
+              </>
+            ) : null}
+          </div>
+
+          {/* 貢献スコア */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Contrib Score</span>
+              <span className="font-mono text-xs text-ink-muted">× 0.25</span>
+            </div>
+            <Row label="貢献スコア (raw)" bv={bs.contribRaw} rv={rs.contribRaw} />
+            <Row label="ビジョンスコア" bv={bs.contribVision} rv={rs.contribVision} indent />
+            <Row label="集団戦参加率" bv={bs.contribTeamFight * 100} rv={rs.contribTeamFight * 100}
+              fmt={(v) => `${v.toFixed(0)}%`} indent />
+            <Row label="コントロールWD" bv={bs.contribControlWards} rv={rs.contribControlWards} indent />
+          </div>
+
+          {/* ムード補正 */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Mood Multiplier</span>
+            </div>
+            <Row label="ムード補正" bv={bs.moodMult} rv={rs.moodMult}
+              fmt={(v) => `×${v.toFixed(2)}`} />
+          </div>
+
+          {/* 計算式サマリー */}
+          <div className="border-t border-wire pt-3">
+            <p className="font-mono text-xs text-ink-muted mb-2">計算式</p>
+            {[{ label: "Blue", s: bs, color: "text-azure" }, { label: "Red", s: rs, color: "text-crimson" }].map(({ label, s, color }) => (
+              <p key={label} className={`font-mono text-xs ${color} leading-relaxed`}>
+                {label}: ({s.rankScore.toFixed(1)}×0.4 + {s.roleScore.toFixed(1)}×0.35 + {s.contribRaw.toFixed(1)}×0.25) × {s.moodMult.toFixed(2)} = <span className="font-bold">{s.total.toFixed(1)}</span>
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -176,7 +299,6 @@ export default function PlayersPage() {
       })
     : [];
 
-  // ロールなし（未割り当て）プレイヤー
   const unmatched = result
     ? [
         ...result.blueTeam.filter((p) => !ALL_ROLES.includes(p.assignedRole as Role)),
@@ -239,37 +361,37 @@ export default function PlayersPage() {
             </div>
 
             <div ref={contentRef}>
-            {/* 列ヘッダー */}
-            <div className="flex items-center gap-2 mb-3 px-1">
-              <span className="font-mono text-xs text-azure uppercase tracking-widest flex-1 text-center">
-                Blue Side
-              </span>
-              <span className="w-20" />
-              <span className="font-mono text-xs text-crimson uppercase tracking-widest flex-1 text-center">
-                Red Side
-              </span>
-            </div>
-
-            {/* 対面マッチアップ */}
-            <div className="flex flex-col gap-3">
-              {matchups.map(({ role, blue, red }) => (
-                <LaneMatchup key={role} blue={blue} red={red} />
-              ))}
-            </div>
-
-            {/* 未割り当てプレイヤー */}
-            {unmatched.length > 0 && (
-              <div className="mt-6 border border-wire bg-surface px-4 py-3">
-                <p className="font-mono text-xs text-ink-muted uppercase tracking-widest mb-2">未割り当て</p>
-                <div className="flex flex-wrap gap-2">
-                  {unmatched.map((p) => (
-                    <span key={p.id} className="font-mono text-sm text-ink-dim border border-wire px-2 py-1">
-                      {p.summonerName}
-                    </span>
-                  ))}
-                </div>
+              {/* 列ヘッダー */}
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <span className="font-mono text-xs text-azure uppercase tracking-widest flex-1 text-center">
+                  Blue Side
+                </span>
+                <span className="w-20" />
+                <span className="font-mono text-xs text-crimson uppercase tracking-widest flex-1 text-center">
+                  Red Side
+                </span>
               </div>
-            )}
+
+              {/* 対面マッチアップ */}
+              <div className="flex flex-col gap-3">
+                {matchups.map(({ role, blue, red }) => (
+                  <LaneMatchup key={role} blue={blue} red={red} />
+                ))}
+              </div>
+
+              {/* 未割り当てプレイヤー */}
+              {unmatched.length > 0 && (
+                <div className="mt-6 border border-wire bg-surface px-4 py-3">
+                  <p className="font-mono text-xs text-ink-muted uppercase tracking-widest mb-2">未割り当て</p>
+                  <div className="flex flex-wrap gap-2">
+                    {unmatched.map((p) => (
+                      <span key={p.id} className="font-mono text-sm text-ink-dim border border-wire px-2 py-1">
+                        {p.summonerName}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
