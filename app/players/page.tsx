@@ -50,11 +50,28 @@ function StatRow({
   fmt?: (v: number) => string;
 }) {
   const { a, b } = cmp(blueVal, redVal);
+  const max = Math.max(blueVal, redVal, 0.01);
+  const bluePct = (blueVal / max) * 100;
+  const redPct = (redVal / max) * 100;
   return (
-    <div className="flex items-center gap-2 py-1">
-      <span className={`font-mono text-sm w-20 text-right ${a}`}>{fmt(blueVal)}</span>
-      <span className="font-mono text-xs text-ink-muted flex-1 text-center">{label}</span>
-      <span className={`font-mono text-sm w-20 ${b}`}>{fmt(redVal)}</span>
+    <div className="flex items-center gap-3 py-1">
+      {/* Blue側: 数値+バーが右寄せ */}
+      <div className="flex-1 flex flex-col items-end gap-0.5">
+        <span className={`font-mono text-sm ${a}`}>{fmt(blueVal)}</span>
+        <div className="w-full h-1 bg-raised flex justify-end">
+          <div className="h-full bg-azure transition-all duration-500" style={{ width: `${bluePct}%` }} />
+        </div>
+      </div>
+
+      <span className="font-mono text-xs text-ink-muted w-16 text-center flex-shrink-0">{label}</span>
+
+      {/* Red側: 数値+バーが左寄せ */}
+      <div className="flex-1 flex flex-col items-start gap-0.5">
+        <span className={`font-mono text-sm ${b}`}>{fmt(redVal)}</span>
+        <div className="w-full h-1 bg-raised">
+          <div className="h-full bg-crimson transition-all duration-500" style={{ width: `${redPct}%` }} />
+        </div>
+      </div>
     </div>
   );
 }
