@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { BalanceResult, PlayerData, Role } from "@/types";
 import { calcRankScore, calcRoleScore, calcTotalScore } from "@/lib/score";
 import { useCopyImage } from "@/lib/useCopyImage";
+import { useToast } from "@/lib/useToast";
 
 const ALL_ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
 const MOOD_LABELS = ["疲れ気味", "普通", "好調", "絶好調"];
@@ -79,8 +80,8 @@ function LaneMatchup({ blue, red }: { blue: PlayerData; red: PlayerData }) {
   const scoreDiff = Math.abs(bs.total - rs.total);
   const role = blue.assignedRole ?? blue.preferredRoles[0];
 
-  const blueRole = blue.roleStats[role ?? ""];
-  const redRole = red.roleStats[role ?? ""];
+  const blueRole = role ? blue.roleStats[role] : undefined;
+  const redRole = role ? red.roleStats[role] : undefined;
 
   return (
     <div className="bg-surface border border-wire">
@@ -152,7 +153,7 @@ function LaneMatchup({ blue, red }: { blue: PlayerData; red: PlayerData }) {
 export default function PlayersPage() {
   const [result, setResult] = useState<BalanceResult | null>(null);
   const { ref: contentRef, copy: copyImage, copying } = useCopyImage();
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const { toastMsg, showToast } = useToast();
 
   useEffect(() => {
     try {
@@ -162,9 +163,8 @@ export default function PlayersPage() {
   }, []);
 
   async function handleCopy() {
-    await copyImage();
-    setToastMsg("画像をコピーしました");
-    setTimeout(() => setToastMsg(null), 3000);
+    const ok = await copyImage();
+    showToast(ok ? "画像をコピーしました" : "コピーに失敗しました（ブラウザ非対応の可能性）");
   }
 
   const matchups = result

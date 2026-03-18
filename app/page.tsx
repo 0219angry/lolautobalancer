@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import type { PlayerData, BalanceResult, Role } from "@/types";
 import PlayerCard from "@/components/PlayerCard";
 import TeamResult from "@/components/TeamResult";
 import { fetchPlayerData } from "@/lib/fetchPlayer";
 import { useCopyImage } from "@/lib/useCopyImage";
+import { useToast } from "@/lib/useToast";
 
 const PLAYER_COUNT = 10;
 
@@ -14,8 +15,7 @@ export default function Home() {
   const [preloadedPlayers, setPreloadedPlayers] = useState<(PlayerData | null)[]>(Array(PLAYER_COUNT).fill(null));
   const [result, setResult] = useState<BalanceResult | null>(null);
   const [balancing, setBalancing] = useState(false);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { toastMsg, showToast } = useToast();
   const { ref: resultRef, copy: copyImage, copying } = useCopyImage();
 
   useEffect(() => {
@@ -34,16 +34,7 @@ export default function Home() {
   const readyCount = players.filter(Boolean).length;
   const allReady = readyCount === PLAYER_COUNT;
 
-  function showToast(msg: string) {
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setToastMsg(msg);
-    toastTimeoutRef.current = setTimeout(() => {
-      setToastMsg(null);
-      toastTimeoutRef.current = null;
-    }, 3000);
-  }
-
-  const handleDataChange = useCallback((index: number, data: PlayerData | null) => {
+const handleDataChange = useCallback((index: number, data: PlayerData | null) => {
     setPlayers((prev) => {
       const next = [...prev];
       next[index] = data;
@@ -314,7 +305,10 @@ export default function Home() {
               <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Result</span>
               <span className="flex-1 h-px bg-wire" />
               <button
-                onClick={async () => { await copyImage(); showToast(copying ? "..." : "画像をコピーしました"); }}
+                onClick={async () => {
+                  const ok = await copyImage();
+                  showToast(ok ? "画像をコピーしました" : "コピーに失敗しました（ブラウザ非対応の可能性）");
+                }}
                 disabled={copying}
                 className="font-mono text-xs text-ink-dim border border-wire px-3 py-1 hover:border-wire-bright hover:text-ink disabled:opacity-30 transition-colors"
               >
