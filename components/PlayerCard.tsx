@@ -68,6 +68,7 @@ function TagList({ tags }: { tags: string[] }) {
 export default function PlayerCard({ index, onDataChange, preloadedData }: Props) {
   const [riotId, setRiotId] = useState("");
   const [cachedIds, setCachedIds] = useState<string[]>([]);
+  const [cacheAgeMin, setCacheAgeMin] = useState<number | null>(null);
   useEffect(() => { setCachedIds(getCachedIds()); }, []);
   const [mood, setMood] = useState<Mood>(1);
   const [preferredRoles, setPreferredRoles] = useState<(Role | null)[]>([null, null]);
@@ -82,6 +83,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
   const [manualLp, setManualLp] = useState(0);
   const [manualContrib, setManualContrib] = useState(50);
 
+  useEffect(() => { setCacheAgeMin(getCacheAgeMin(riotId)); }, [riotId, playerData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!preloadedData) return;
@@ -224,12 +226,9 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
         )}
         {playerData ? (
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {(() => {
-              const age = getCacheAgeMin(riotId);
-              return age !== null ? (
-                <span className="font-mono text-xs text-ink-muted">{age}分前</span>
-              ) : null;
-            })()}
+            {cacheAgeMin !== null && (
+              <span className="font-mono text-xs text-ink-muted">{cacheAgeMin}分前</span>
+            )}
             <button
               onClick={() => { setPlayerData(null); fetchPlayer(true); }}
               title="再取得"
