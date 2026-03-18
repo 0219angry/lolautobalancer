@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { BalanceResult, PlayerData, Role } from "@/types";
 import { calcRankScore, calcRoleScore, calcTotalScore } from "@/lib/score";
+import { useCopyImage } from "@/lib/useCopyImage";
 
 const ALL_ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
 const MOOD_LABELS = ["疲れ気味", "普通", "好調", "絶好調"];
@@ -150,6 +151,8 @@ function LaneMatchup({ blue, red }: { blue: PlayerData; red: PlayerData }) {
 
 export default function PlayersPage() {
   const [result, setResult] = useState<BalanceResult | null>(null);
+  const { ref: contentRef, copy: copyImage, copying } = useCopyImage();
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -157,6 +160,12 @@ export default function PlayersPage() {
       if (stored) setResult(JSON.parse(stored));
     } catch { /* ignore */ }
   }, []);
+
+  async function handleCopy() {
+    await copyImage();
+    setToastMsg("画像をコピーしました");
+    setTimeout(() => setToastMsg(null), 3000);
+  }
 
   const matchups = result
     ? ALL_ROLES.flatMap((role) => {
@@ -186,12 +195,21 @@ export default function PlayersPage() {
               LANE <span className="text-gold">MATCHUPS</span>
             </h1>
           </div>
-          <a
-            href="/"
-            className="font-mono text-sm text-ink-dim border border-wire px-3 py-1.5 hover:border-wire-bright hover:text-ink transition-colors"
-          >
-            ← ホームに戻る
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopy}
+              disabled={copying || !result}
+              className="font-mono text-sm text-ink-dim border border-wire px-3 py-1.5 hover:border-wire-bright hover:text-ink disabled:opacity-30 transition-colors"
+            >
+              {copying ? "..." : "画像コピー"}
+            </button>
+            <a
+              href="/"
+              className="font-mono text-sm text-ink-dim border border-wire px-3 py-1.5 hover:border-wire-bright hover:text-ink transition-colors"
+            >
+              ← ホームに戻る
+            </a>
+          </div>
         </div>
       </header>
 
@@ -219,6 +237,7 @@ export default function PlayersPage() {
               </div>
             </div>
 
+            <div ref={contentRef}>
             {/* 列ヘッダー */}
             <div className="flex items-center gap-2 mb-3 px-1">
               <span className="font-mono text-xs text-azure uppercase tracking-widest flex-1 text-center">
@@ -250,9 +269,15 @@ export default function PlayersPage() {
                 </div>
               </div>
             )}
+            </div>
           </>
         )}
       </div>
+      {toastMsg && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-surface border border-wire-bright text-ink px-5 py-3 text-sm font-mono z-50">
+          {toastMsg}
+        </div>
+      )}
     </main>
   );
 }

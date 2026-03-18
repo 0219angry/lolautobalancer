@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import type { PlayerData, BalanceResult, Role } from "@/types";
 import PlayerCard from "@/components/PlayerCard";
 import TeamResult from "@/components/TeamResult";
 import { fetchPlayerData } from "@/lib/fetchPlayer";
+import { useCopyImage } from "@/lib/useCopyImage";
 
 const PLAYER_COUNT = 10;
 
@@ -15,6 +16,14 @@ export default function Home() {
   const [balancing, setBalancing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { ref: resultRef, copy: copyImage, copying } = useCopyImage();
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("balancer_result");
+      if (stored) setResult(JSON.parse(stored));
+    } catch { /* ignore */ }
+  }, []);
 
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
@@ -304,6 +313,13 @@ export default function Home() {
             <div className="flex items-center gap-3 mb-5">
               <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Result</span>
               <span className="flex-1 h-px bg-wire" />
+              <button
+                onClick={async () => { await copyImage(); showToast(copying ? "..." : "画像をコピーしました"); }}
+                disabled={copying}
+                className="font-mono text-xs text-ink-dim border border-wire px-3 py-1 hover:border-wire-bright hover:text-ink disabled:opacity-30 transition-colors"
+              >
+                {copying ? "..." : "画像コピー"}
+              </button>
               <a
                 href="/players"
                 className="font-mono text-xs text-ink-dim border border-wire px-3 py-1 hover:border-wire-bright hover:text-ink transition-colors"
@@ -311,12 +327,14 @@ export default function Home() {
                 スコア詳細 →
               </a>
             </div>
-            <TeamResult
-              result={result}
-              onRoleChange={handleRoleChange}
-              onReconfirm={handleReconfirm}
-              onReshuffle={handleReshuffle}
-            />
+            <div ref={resultRef}>
+              <TeamResult
+                result={result}
+                onRoleChange={handleRoleChange}
+                onReconfirm={handleReconfirm}
+                onReshuffle={handleReshuffle}
+              />
+            </div>
           </section>
         )}
       </div>
