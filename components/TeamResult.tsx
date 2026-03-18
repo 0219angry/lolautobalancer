@@ -27,8 +27,8 @@ export default function TeamResult({ result, onRoleChange, onReconfirm, onReshuf
               key={i}
               className={`font-mono text-sm px-3 py-1 border ${
                 d.type === "ok"
-                  ? "border-emerald-800 text-emerald-400"
-                  : "border-gold-dim text-gold"
+                  ? "border-emerald-800 text-emerald-400 bg-surface"
+                  : "border-gold-dim text-gold bg-surface"
               }`}
             >
               {d.type === "ok" ? "OK" : "!"}{" "}
@@ -69,7 +69,7 @@ export default function TeamResult({ result, onRoleChange, onReconfirm, onReshuf
       </div>
 
       {/* アクションボタン */}
-      <div className="flex gap-3">
+      <div className="flex gap-3" data-no-capture>
         <button
           onClick={onReconfirm}
           className="border border-wire-bright text-ink text-sm font-mono px-5 py-2.5 hover:border-gold hover:text-gold transition-colors"

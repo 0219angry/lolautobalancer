@@ -13,7 +13,11 @@ export function useCopyImage(): {
     if (!ref.current) return;
     setCopying(true);
     try {
-      const dataUrl = await toPng(ref.current, { cacheBust: true });
+      const dataUrl = await toPng(ref.current, {
+        cacheBust: true,
+        backgroundColor: "#0f1218",
+        filter: (node) => !(node instanceof HTMLElement && "noCapture" in node.dataset),
+      });
       const blob = await fetch(dataUrl).then((r) => r.blob());
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
     } finally {
