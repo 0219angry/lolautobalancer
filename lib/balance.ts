@@ -6,6 +6,11 @@ const ALL_ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
 // チーム合計差 vs 対面差 の重みバランス（0=合計のみ, 1=同等, 2=対面優先）
 const LANE_DIFF_WEIGHT = 0.6;
 
+// 希望ロール + できるロールを合わせた「担当可能なロール」一覧
+function getPlayableRoles(p: PlayerData): Role[] {
+  return [...new Set([...p.preferredRoles, ...(p.canPlayRoles ?? [])])] as Role[];
+}
+
 function calcLaneDiffSum(
   blue: Array<{ assignedRole?: Role; _score: number }>,
   red: Array<{ assignedRole?: Role; _score: number }>
@@ -42,14 +47,19 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
     }
   }
 
-  // 同ロール希望者が多い場合は第2希望で再分配
+  // 同ロール希望者が多い場合は第2希望 → できるロール → 未割り当てで再分配
   for (const role of ALL_ROLES) {
     while (roleGroups[role].length > 2) {
-      // スコアが最も低いプレイヤーを第2希望へ移動
+      // スコアが最も低いプレイヤーを移動
       roleGroups[role].sort((a, b) => a._score - b._score);
       const displaced = roleGroups[role].shift()!;
-      const altRole = displaced.preferredRoles[1];
-      if (altRole && ALL_ROLES.includes(altRole as Role) && roleGroups[altRole].length < 2) {
+      // 第2希望 → できるロールの順で空きを探す
+      const fallbacks = [
+        displaced.preferredRoles[1],
+        ...(displaced.canPlayRoles ?? []),
+      ].filter((r): r is Role => !!r && ALL_ROLES.includes(r as Role));
+      const altRole = fallbacks.find((r) => roleGroups[r].length < 2);
+      if (altRole) {
         roleGroups[altRole].push(displaced);
       } else {
         unassigned.push(displaced);
@@ -121,8 +131,10 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
         if (fixedRolePlayerIds.has(redTeam[ri].id)) continue;
         // スワップ後に相手のロールを担当できるか確認（同一ロールは常にOK）
         const sameRole = blueTeam[bi].assignedRole === redTeam[ri].assignedRole;
-        const blueCanPlay = sameRole || blueTeam[bi].preferredRoles.includes(redTeam[ri].assignedRole as Role);
-        const redCanPlay = sameRole || redTeam[ri].preferredRoles.includes(blueTeam[bi].assignedRole as Role);
+        const bluePlayable = getPlayableRoles(blueTeam[bi]);
+        const redPlayable = getPlayableRoles(redTeam[ri]);
+        const blueCanPlay = sameRole || bluePlayable.includes(redTeam[ri].assignedRole as Role);
+        const redCanPlay = sameRole || redPlayable.includes(blueTeam[bi].assignedRole as Role);
         if (!blueCanPlay || !redCanPlay) continue;
 
         const newBlue = blueScore - blueTeam[bi]._score + redTeam[ri]._score;

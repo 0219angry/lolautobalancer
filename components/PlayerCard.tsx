@@ -28,6 +28,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
   const [riotId, setRiotId] = useState("");
   const [mood, setMood] = useState<Mood>(1);
   const [preferredRoles, setPreferredRoles] = useState<(Role | null)[]>([null, null]);
+  const [canPlayRoles, setCanPlayRoles] = useState<Role[]>([]);
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
     setRiotId(preloadedData.riotId);
     setMood(preloadedData.mood);
     setPreferredRoles([preloadedData.preferredRoles[0] ?? null, preloadedData.preferredRoles[1] ?? null]);
+    setCanPlayRoles(preloadedData.canPlayRoles ?? []);
     setPlayerData(preloadedData);
     setError(null);
     setManualMode(false);
@@ -64,6 +66,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
       } else {
         setPreferredRoles([data.preferredRoles[0] ?? null, data.preferredRoles[1] ?? null]);
       }
+      data.canPlayRoles = canPlayRoles;
       data.mood = mood;
       setPlayerData({ ...data });
       onDataChange(index, data);
@@ -86,6 +89,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
       rank: manualRank,
       lp: manualLp,
       preferredRoles: preferredRoles.filter(Boolean) as Role[],
+      canPlayRoles,
       roleStats: {},
       contributionScore: { visionScore: 0, teamFightParticipation: 0, controlWardsBought: 0, raw: manualContrib },
       mood,
@@ -115,12 +119,27 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
     }
   }
 
+  function toggleCanPlayRole(role: Role) {
+    const preferred = preferredRoles.filter(Boolean) as Role[];
+    if (preferred.includes(role)) return; // 希望ロールは除外
+    const next = canPlayRoles.includes(role)
+      ? canPlayRoles.filter((r) => r !== role)
+      : [...canPlayRoles, role];
+    setCanPlayRoles(next);
+    if (playerData) {
+      const updated = { ...playerData, canPlayRoles: next };
+      setPlayerData(updated);
+      onDataChange(index, updated);
+    }
+  }
+
   function clearPlayer() {
     setPlayerData(null);
     setRiotId("");
     setError(null);
     setManualMode(false);
     setPreferredRoles([null, null]);
+    setCanPlayRoles([]);
     onDataChange(index, null);
   }
 
@@ -286,6 +305,34 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
                 <option key={r} value={r}>{ROLE_SHORT[r]}</option>
               ))}
             </select>
+          </div>
+
+          {/* できるロール */}
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-sm text-ink-muted w-14 flex-shrink-0">できる</span>
+            <div className="flex gap-1 flex-wrap">
+              {ROLES.map((r) => {
+                const isPreferred = (preferredRoles.filter(Boolean) as Role[]).includes(r);
+                const isCanPlay = canPlayRoles.includes(r);
+                return (
+                  <button
+                    key={r}
+                    onClick={() => toggleCanPlayRole(r)}
+                    disabled={isPreferred}
+                    title={isPreferred ? "希望ロール" : undefined}
+                    className={`font-mono text-xs px-2 py-1 border transition-colors ${
+                      isPreferred
+                        ? "border-gold/40 text-gold/40 cursor-default"
+                        : isCanPlay
+                        ? "border-azure text-azure"
+                        : "border-wire text-ink-muted hover:border-wire-bright hover:text-ink"
+                    }`}
+                  >
+                    {ROLE_SHORT[r]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* ムード */}
