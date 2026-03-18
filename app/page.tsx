@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { PlayerData, BalanceResult, Role } from "@/types";
 import PlayerCard from "@/components/PlayerCard";
 import TeamResult from "@/components/TeamResult";
@@ -23,13 +23,29 @@ export default function Home() {
       const stored = localStorage.getItem("balancer_result");
       if (stored) setResult(JSON.parse(stored));
     } catch { /* ignore */ }
+    try {
+      const storedPlayers = localStorage.getItem("balancer_players");
+      if (storedPlayers) {
+        const parsed: (PlayerData | null)[] = JSON.parse(storedPlayers);
+        setPlayers(parsed);
+        setPreloadedPlayers(parsed);
+        setCardResetKey((k) => k + 1);
+      }
+    } catch { /* ignore */ }
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("balancer_players", JSON.stringify(players));
+    } catch { /* ignore */ }
+  }, [players]);
 
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
   const [cardResetKey, setCardResetKey] = useState(0);
+  const bulkCancelRef = useRef(false);
 
   const readyCount = players.filter(Boolean).length;
   const allReady = readyCount === PLAYER_COUNT;
@@ -82,14 +98,17 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
       return;
     }
 
+    bulkCancelRef.current = false;
     setBulkLoading(true);
     setBulkProgress({ done: 0, total: parsedIds.length });
 
     const results: (PlayerData | null)[] = Array(PLAYER_COUNT).fill(null);
     const errors: string[] = [];
+    let cancelled = false;
 
     // 逐次実行でRiot APIレート制限を回避
     for (let i = 0; i < parsedIds.slice(0, PLAYER_COUNT).length; i++) {
+      if (bulkCancelRef.current) { cancelled = true; break; }
       const id = parsedIds[i];
       try {
         const data = await fetchPlayerData(id, i);
@@ -109,7 +128,9 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
     setBulkOpen(false);
     setBulkText("");
 
-    if (errors.length > 0) {
+    if (cancelled) {
+      showToast("取得をキャンセルしました");
+    } else if (errors.length > 0) {
       showToast(`${errors.length} 件取得失敗: ${errors[0]}${errors.length > 1 ? " 他" : ""}`);
     } else {
       showToast(`${parsedIds.length} 人のデータを取得しました`);
@@ -264,13 +285,23 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
                 </div>
               )}
 
-              <button
-                onClick={handleBulkImport}
-                disabled={bulkLoading || parsedIds.length === 0}
-                className="border border-gold text-gold font-mono text-sm uppercase tracking-widest px-4 py-2 hover:bg-gold hover:text-canvas disabled:opacity-30 disabled:cursor-not-allowed transition-colors self-start"
-              >
-                {bulkLoading ? "取得中..." : `取得 (${Math.min(parsedIds.length, PLAYER_COUNT)}人)`}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBulkImport}
+                  disabled={bulkLoading || parsedIds.length === 0}
+                  className="border border-gold text-gold font-mono text-sm uppercase tracking-widest px-4 py-2 hover:bg-gold hover:text-canvas disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  {bulkLoading ? "取得中..." : `取得 (${Math.min(parsedIds.length, PLAYER_COUNT)}人)`}
+                </button>
+                {bulkLoading && (
+                  <button
+                    onClick={() => { bulkCancelRef.current = true; }}
+                    className="border border-wire text-ink-dim font-mono text-sm px-3 py-2 hover:border-crimson hover:text-crimson transition-colors"
+                  >
+                    キャンセル
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

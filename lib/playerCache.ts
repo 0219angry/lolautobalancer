@@ -48,6 +48,18 @@ export function getCacheAgeMin(riotId: string): number | null {
   }
 }
 
+/** TTL内のキャッシュ済み Riot ID を元のケースで返す */
+export function getCachedIds(): string[] {
+  try {
+    const store = loadStore();
+    return Object.values(store)
+      .filter((e) => Date.now() - e.at <= TTL_MS)
+      .map((e) => e.data.riotId);
+  } catch {
+    return [];
+  }
+}
+
 export function clearPlayerCache(): void {
   try {
     localStorage.removeItem(CACHE_KEY);

@@ -3,7 +3,17 @@
 import { useState, useEffect } from "react";
 import type { PlayerInput, PlayerData, Mood, Role, Tier } from "@/types";
 import { fetchPlayerData } from "@/lib/fetchPlayer";
-import { getCacheAgeMin } from "@/lib/playerCache";
+import { getCacheAgeMin, getCachedIds } from "@/lib/playerCache";
+
+const TAG_DESCRIPTIONS: Record<string, string> = {
+  ハイランク: "マスター以上のランク帯",
+  ビジョン型: "平均ビジョンスコア40以上の視界管理が得意なプレイヤー",
+  集団戦型: "チームファイト参加率65%以上の集団戦貢献が高いプレイヤー",
+  高貢献: "総合貢献スコアが70以上の高サポート力",
+  安定型: "第1希望ロールで勝率60%以上（5試合以上）",
+  高KDA: "第1希望ロールで平均KDA4.0以上",
+  CS型: "第1希望ロールで平均CS/分7.0以上のファームが得意なプレイヤー",
+};
 
 const ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
 const ROLE_SHORT: Record<Role, string> = {
@@ -24,8 +34,57 @@ interface Props {
   preloadedData?: PlayerData | null;
 }
 
+function TagList({ tags }: { tags: string[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-1 pt-0.5 border-t border-wire">
+        {tags.map((tag) => (
+          <span key={tag} className="font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5">
+            {tag}
+          </span>
+        ))}
+        <button
+          onClick={() => setOpen(true)}
+          className="font-mono text-xs text-ink-muted border border-wire px-1.5 py-0.5 hover:text-ink hover:border-wire-bright transition-colors"
+        >
+          ?
+        </button>
+      </div>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-surface border border-wire-bright w-80 max-w-[90vw] p-5 flex flex-col gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Auto Tags</span>
+              <button onClick={() => setOpen(false)} className="text-ink-muted hover:text-ink transition-colors text-sm">✕</button>
+            </div>
+            <div className="flex flex-col gap-2.5">
+              {Object.entries(TAG_DESCRIPTIONS).map(([tag, desc]) => (
+                <div key={tag} className="flex flex-col gap-0.5">
+                  <span className="font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5 w-fit">{tag}</span>
+                  <p className="font-mono text-xs text-ink-dim leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function PlayerCard({ index, onDataChange, preloadedData }: Props) {
   const [riotId, setRiotId] = useState("");
+  const [cachedIds, setCachedIds] = useState<string[]>([]);
+  const [cacheAgeMin, setCacheAgeMin] = useState<number | null>(null);
+  useEffect(() => { setCachedIds(getCachedIds()); }, []);
   const [mood, setMood] = useState<Mood>(1);
   const [preferredRoles, setPreferredRoles] = useState<(Role | null)[]>([null, null]);
   const [canPlayRoles, setCanPlayRoles] = useState<Role[]>([]);
@@ -39,6 +98,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
   const [manualLp, setManualLp] = useState(0);
   const [manualContrib, setManualContrib] = useState(50);
 
+  useEffect(() => { setCacheAgeMin(getCacheAgeMin(riotId)); }, [riotId, playerData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!preloadedData) return;
@@ -165,6 +225,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
         </span>
         <input
           type="text"
+          list={`cached-ids-${index}`}
           value={riotId}
           onChange={(e) => setRiotId(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && fetchPlayer()}
@@ -173,14 +234,16 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
           disabled={loading}
           className="flex-1 bg-transparent text-ink text-sm font-mono font-medium placeholder-ink-muted focus:outline-none min-w-0"
         />
+        {cachedIds.length > 0 && (
+          <datalist id={`cached-ids-${index}`}>
+            {cachedIds.map((id) => <option key={id} value={id} />)}
+          </datalist>
+        )}
         {playerData ? (
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {(() => {
-              const age = getCacheAgeMin(riotId);
-              return age !== null ? (
-                <span className="font-mono text-xs text-ink-muted">{age}分前</span>
-              ) : null;
-            })()}
+            {cacheAgeMin !== null && (
+              <span className="font-mono text-xs text-ink-muted">{cacheAgeMin}分前</span>
+            )}
             <button
               onClick={() => { setPlayerData(null); fetchPlayer(true); }}
               title="再取得"
@@ -354,13 +417,7 @@ export default function PlayerCard({ index, onDataChange, preloadedData }: Props
 
           {/* 自動タグ */}
           {(playerData.autoTags?.length ?? 0) > 0 && (
-            <div className="flex flex-wrap gap-1 pt-0.5 border-t border-wire">
-              {playerData.autoTags!.map((tag) => (
-                <span key={tag} className="font-mono text-xs border border-gold/50 text-gold px-1.5 py-0.5">
-                  {tag}
-                </span>
-              ))}
-            </div>
+            <TagList tags={playerData.autoTags!} />
           )}
         </div>
       )}
