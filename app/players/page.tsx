@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { BalanceResult, PlayerData, Role } from "@/types";
 import { calcRankScore, calcRoleScore, calcTotalScore } from "@/lib/score";
 import { useCopyImage } from "@/lib/useCopyImage";
@@ -203,12 +204,12 @@ export default function PlayersPage() {
             >
               {copying ? "..." : "画像コピー"}
             </button>
-            <a
+            <Link
               href="/"
               className="font-mono text-sm text-ink-dim border border-wire px-3 py-1.5 hover:border-wire-bright hover:text-ink transition-colors"
             >
               ← ホームに戻る
-            </a>
+            </Link>
           </div>
         </div>
       </header>
@@ -219,9 +220,9 @@ export default function PlayersPage() {
             <p className="font-mono text-sm text-ink-muted">
               チーム分けを実行してからこのページを開いてください
             </p>
-            <a href="/" className="font-mono text-sm text-gold mt-3 inline-block hover:text-gold-bright">
+            <Link href="/" className="font-mono text-sm text-gold mt-3 inline-block hover:text-gold-bright">
               ← ホームへ
-            </a>
+            </Link>
           </div>
         ) : (
           <>
