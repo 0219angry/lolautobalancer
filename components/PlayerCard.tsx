@@ -43,7 +43,7 @@ function TagList({ tags }: { tags: string[] }) {
         {tags.map((tag) => (
           <span
             key={tag}
-            className={`font-mono text-xs border px-1.5 py-0.5 cursor-default transition-colors ${
+            className={`font-mono text-xs border px-1.5 py-0.5 cursor-default select-none transition-colors ${
               activeTag === tag
                 ? "border-gold text-gold"
                 : "border-gold/50 text-gold/70"
