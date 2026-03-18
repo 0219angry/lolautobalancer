@@ -3,6 +3,22 @@ import { calcTotalScore } from "./score";
 
 const ALL_ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
 
+// チーム合計差 vs 対面差 の重みバランス（0=合計のみ, 1=同等, 2=対面優先）
+const LANE_DIFF_WEIGHT = 0.6;
+
+function calcLaneDiffSum(
+  blue: Array<{ assignedRole?: Role; _score: number }>,
+  red: Array<{ assignedRole?: Role; _score: number }>
+): number {
+  let sum = 0;
+  for (const role of ALL_ROLES) {
+    const bp = blue.find((p) => p.assignedRole === role);
+    const rp = red.find((p) => p.assignedRole === role);
+    if (bp && rp) sum += Math.abs(bp._score - rp._score);
+  }
+  return sum;
+}
+
 export function balanceTeams(players: PlayerData[]): BalanceResult {
   if (players.length !== 10) {
     throw new Error("Players must be exactly 10");
@@ -88,10 +104,14 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
 
   const fixedRolePlayerIds = new Set(players.filter((p) => p.assignedRole).map((p) => p.id));
 
+  let currentLaneDiff = calcLaneDiffSum(blueTeam, redTeam);
+  const composite = (teamDiff: number, laneDiff: number) =>
+    teamDiff + LANE_DIFF_WEIGHT * laneDiff;
+
   let improved = true;
   while (improved && Math.abs(blueScore - redScore) > scoreDiffThreshold) {
     improved = false;
-    let bestDiff = Math.abs(blueScore - redScore);
+    let bestComposite = composite(Math.abs(blueScore - redScore), currentLaneDiff);
     let bestSwap: [number, number] | null = null;
 
     for (let bi = 0; bi < blueTeam.length; bi++) {
@@ -107,9 +127,17 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
 
         const newBlue = blueScore - blueTeam[bi]._score + redTeam[ri]._score;
         const newRed = redScore - redTeam[ri]._score + blueTeam[bi]._score;
-        const diff = Math.abs(newBlue - newRed);
-        if (diff < bestDiff) {
-          bestDiff = diff;
+
+        // スワップ後の対面差を計算（一時配列で評価）
+        const tmpBlue = [...blueTeam];
+        const tmpRed = [...redTeam];
+        tmpBlue[bi] = redTeam[ri];
+        tmpRed[ri] = blueTeam[bi];
+        const newLaneDiff = calcLaneDiffSum(tmpBlue, tmpRed);
+
+        const newComposite = composite(Math.abs(newBlue - newRed), newLaneDiff);
+        if (newComposite < bestComposite) {
+          bestComposite = newComposite;
           bestSwap = [bi, ri];
         }
       }
@@ -122,11 +150,20 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
       redTeam[ri] = tmp;
       blueScore = blueTeam.reduce((s, p) => s + p._score, 0);
       redScore = redTeam.reduce((s, p) => s + p._score, 0);
+      currentLaneDiff = calcLaneDiffSum(blueTeam, redTeam);
       improved = true;
     }
   }
 
   // Step 6: assignedRole の確定（未設定プレイヤーに effectiveRole を書き込む）
+  // 対面差を確定前のスコア付き配列で計算しておく
+  const laneDiffs: Partial<Record<Role, number>> = {};
+  for (const role of ALL_ROLES) {
+    const bp = blueTeam.find((p) => p.assignedRole === role);
+    const rp = redTeam.find((p) => p.assignedRole === role);
+    if (bp && rp) laneDiffs[role] = Math.round(Math.abs(bp._score - rp._score));
+  }
+
   const finalBlue: PlayerData[] = blueTeam.map(({ _score: _, ...p }) => ({
     ...p,
     assignedRole: p.assignedRole ?? (p.preferredRoles[0] as Role | undefined),
@@ -136,7 +173,7 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
     assignedRole: p.assignedRole ?? (p.preferredRoles[0] as Role | undefined),
   }));
 
-  const diagnostics = generateDiagnostics(finalBlue, finalRed, blueScore, redScore);
+  const diagnostics = generateDiagnostics(finalBlue, finalRed, blueScore, redScore, laneDiffs);
 
   return {
     blueTeam: finalBlue,
@@ -152,7 +189,8 @@ function generateDiagnostics(
   blue: PlayerData[],
   red: PlayerData[],
   blueScore: number,
-  redScore: number
+  redScore: number,
+  laneDiffs: Partial<Record<Role, number>> = {}
 ): Diagnostic[] {
   const diags: Diagnostic[] = [];
   const total = blueScore + redScore;
@@ -198,6 +236,19 @@ function generateDiagnostics(
     diags.push({ team: "both", type: "ok", message: "バランス良好" });
   } else if (diffRatio > 0.15) {
     diags.push({ team: "both", type: "warn", message: "スコア差大きめ" });
+  }
+
+  // 対面差チェック（各ロールの実力差が大きいレーンを警告）
+  const LANE_WARN_THRESHOLD = 20;
+  for (const role of ALL_ROLES) {
+    const diff = laneDiffs[role];
+    if (diff !== undefined && diff > LANE_WARN_THRESHOLD) {
+      diags.push({
+        team: "both",
+        type: "warn",
+        message: `${role}レーンの実力差大（${diff}pt）`,
+      });
+    }
   }
 
   return diags;
