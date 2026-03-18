@@ -18,6 +18,7 @@ const mono = Space_Mono({
 export const metadata: Metadata = {
   title: "LoL Custom Team Balancer",
   description: "League of Legends カスタムマッチ チーム自動バランサー",
+  icons: { icon: "/keyboard_l_black.svg" },
 };
 
 export default function RootLayout({
