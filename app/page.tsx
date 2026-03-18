@@ -104,6 +104,7 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
     const results: (PlayerData | null)[] = Array(PLAYER_COUNT).fill(null);
     const errors: string[] = [];
     let cancelled = false;
+    let rateLimited = false;
 
     // 逐次実行でRiot APIレート制限を回避
     for (let i = 0; i < parsedIds.slice(0, PLAYER_COUNT).length; i++) {
@@ -113,7 +114,9 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
         const data = await fetchPlayerData(id, i);
         results[i] = data;
       } catch (e) {
-        errors.push(`${id}: ${e instanceof Error ? e.message : "取得失敗"}`);
+        const msg = e instanceof Error ? e.message : "取得失敗";
+        if (msg === "RATE_LIMIT") { rateLimited = true; break; }
+        errors.push(`${id}: ${msg}`);
         results[i] = null;
       }
       setBulkProgress({ done: i + 1, total: parsedIds.length });
@@ -127,7 +130,9 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
     setBulkOpen(false);
     setBulkText("");
 
-    if (cancelled) {
+    if (rateLimited) {
+      showToast("API上限に達しました。約2分後に再試行してください");
+    } else if (cancelled) {
       showToast("取得をキャンセルしました");
     } else if (errors.length > 0) {
       showToast(`${errors.length} 件取得失敗: ${errors[0]}${errors.length > 1 ? " 他" : ""}`);
@@ -157,6 +162,13 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
     } finally {
       setBalancing(false);
     }
+  }
+
+  function handleClearAll() {
+    const empty = Array(PLAYER_COUNT).fill(null);
+    setPlayers(empty);
+    setPreloadedPlayers(empty);
+    setCardResetKey((k) => k + 1);
   }
 
   async function handleBalance() {
@@ -222,12 +234,22 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
               <span className="font-mono text-xs text-ink-muted uppercase tracking-widest">Players</span>
               <span className="font-mono text-sm text-gold">{readyCount} / {PLAYER_COUNT}</span>
             </div>
-            <button
-              onClick={() => setBulkOpen((v) => !v)}
-              className="border border-wire text-ink-dim text-sm px-3 py-1.5 tracking-wide hover:border-wire-bright hover:text-ink transition-colors"
-            >
-              {bulkOpen ? "閉じる" : "一括入力"}
-            </button>
+            <div className="flex items-center gap-2">
+              {readyCount > 0 && (
+                <button
+                  onClick={handleClearAll}
+                  className="border border-wire text-ink-muted text-sm px-3 py-1.5 tracking-wide hover:border-crimson hover:text-crimson transition-colors"
+                >
+                  全クリア
+                </button>
+              )}
+              <button
+                onClick={() => setBulkOpen((v) => !v)}
+                className="border border-wire text-ink-dim text-sm px-3 py-1.5 tracking-wide hover:border-wire-bright hover:text-ink transition-colors"
+              >
+                {bulkOpen ? "閉じる" : "一括入力"}
+              </button>
+            </div>
           </div>
 
           {/* 一括入力パネル */}

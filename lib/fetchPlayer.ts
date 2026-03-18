@@ -46,6 +46,7 @@ export async function fetchPlayerData(riotId: string, index: number, skipCache =
 
   const sumRes = await fetch(`/api/summoner?name=${encodeURIComponent(name)}&tag=${encodeURIComponent(tag)}`);
   if (!sumRes.ok) {
+    if (sumRes.status === 429) throw new Error("RATE_LIMIT");
     const e = await sumRes.json();
     throw new Error(e.error ?? "サモナー取得失敗");
   }
