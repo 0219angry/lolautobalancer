@@ -274,6 +274,118 @@ function LaneMatchup({ blue, red }: { blue: PlayerData; red: PlayerData }) {
   );
 }
 
+function TeamSummary({ result, matchups }: {
+  result: BalanceResult;
+  matchups: { role: Role; blue: PlayerData; red: PlayerData }[];
+}) {
+  const { blueTeam, redTeam, blueScore, redScore, scoreDiff } = result;
+  const total = blueScore + redScore;
+  const bluePct = total > 0 ? (blueScore / total) * 100 : 50;
+  const diffRatio = total > 0 ? scoreDiff / total : 0;
+  const balance = diffRatio <= 0.03 ? { label: "均衡", color: "text-emerald-400" }
+    : diffRatio <= 0.08 ? { label: "やや差あり", color: "text-gold" }
+    : { label: "差大きめ", color: "text-crimson" };
+
+  // チーム別コンポーネント平均
+  function teamAvg(team: PlayerData[], fn: (p: PlayerData) => number) {
+    return team.reduce((s, p) => s + fn(p), 0) / team.length;
+  }
+  const bRank = teamAvg(blueTeam, (p) => calcRankScore(p.tier, p.rank, p.lp) * 0.4);
+  const rRank = teamAvg(redTeam, (p) => calcRankScore(p.tier, p.rank, p.lp) * 0.4);
+  const bRole = teamAvg(blueTeam, (p) => calcRoleScore(p, p.assignedRole ?? p.preferredRoles[0] ?? "TOP") * 0.35);
+  const rRole = teamAvg(redTeam, (p) => calcRoleScore(p, p.assignedRole ?? p.preferredRoles[0] ?? "TOP") * 0.35);
+  const bContrib = teamAvg(blueTeam, (p) => p.contributionScore.raw * 0.25);
+  const rContrib = teamAvg(redTeam, (p) => p.contributionScore.raw * 0.25);
+
+  function ComponentBar({ label, bv, rv }: { label: string; bv: number; rv: number }) {
+    const t = bv + rv;
+    const bp = t > 0 ? (bv / t) * 100 : 50;
+    return (
+      <div className="flex items-center gap-3">
+        <span className="font-mono text-xs text-azure w-12 text-right tabular-nums">{bv.toFixed(1)}</span>
+        <div className="flex-1 flex flex-col gap-0.5">
+          <span className="font-mono text-xs text-ink-muted text-center">{label}</span>
+          <div className="flex h-1.5 rounded-sm overflow-hidden">
+            <div className="bg-azure transition-all duration-700" style={{ width: `${bp}%` }} />
+            <div className="bg-crimson transition-all duration-700" style={{ width: `${100 - bp}%` }} />
+          </div>
+        </div>
+        <span className="font-mono text-xs text-crimson w-12 tabular-nums">{rv.toFixed(1)}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-surface border border-wire mb-6">
+      {/* スコア行 */}
+      <div className="grid grid-cols-2 gap-px bg-wire">
+        <div className="bg-surface px-5 py-4 border-l-2 border-l-azure">
+          <p className="font-mono text-xs text-azure uppercase tracking-widest mb-1">Blue Team</p>
+          <p className="font-mono text-3xl font-bold text-azure tabular-nums">{blueScore}</p>
+        </div>
+        <div className="bg-surface px-5 py-4 border-l-2 border-l-crimson">
+          <p className="font-mono text-xs text-crimson uppercase tracking-widest mb-1">Red Team</p>
+          <p className="font-mono text-3xl font-bold text-crimson tabular-nums">{redScore}</p>
+        </div>
+      </div>
+
+      {/* バランスメーター */}
+      <div className="px-5 py-4 flex flex-col gap-2 border-t border-wire">
+        <div className="flex items-center justify-between mb-1">
+          <span className="font-mono text-xs text-azure">{bluePct.toFixed(1)}%</span>
+          <span className={`font-mono text-xs ${balance.color}`}>
+            {balance.label}（差 {scoreDiff}pt）
+          </span>
+          <span className="font-mono text-xs text-crimson">{(100 - bluePct).toFixed(1)}%</span>
+        </div>
+        <div className="flex h-3 overflow-hidden border border-wire">
+          <div className="bg-azure transition-all duration-700" style={{ width: `${bluePct}%` }} />
+          <div className="bg-crimson transition-all duration-700" style={{ width: `${100 - bluePct}%` }} />
+        </div>
+      </div>
+
+      {/* コンポーネント内訳 */}
+      <div className="px-5 pb-4 flex flex-col gap-2 border-t border-wire pt-3">
+        <p className="font-mono text-xs text-ink-muted uppercase tracking-widest mb-1">Team Avg. Breakdown</p>
+        <ComponentBar label="Rank ×0.40" bv={bRank} rv={rRank} />
+        <ComponentBar label="Role ×0.35" bv={bRole} rv={rRole} />
+        <ComponentBar label="Contrib ×0.25" bv={bContrib} rv={rContrib} />
+      </div>
+
+      {/* ロール別スコア */}
+      {matchups.length > 0 && (
+        <div className="px-5 pb-4 flex flex-col gap-2 border-t border-wire pt-3">
+          <p className="font-mono text-xs text-ink-muted uppercase tracking-widest mb-1">Per Lane Score</p>
+          {matchups.map(({ role, blue, red }) => {
+            const bs = calcTotalScore(blue);
+            const rs = calcTotalScore(red);
+            const t = bs + rs;
+            const bp = t > 0 ? (bs / t) * 100 : 50;
+            const diff = Math.abs(bs - rs);
+            const diffColor = diff <= 5 ? "text-emerald-400" : diff <= 15 ? "text-gold" : "text-crimson";
+            return (
+              <div key={role} className="flex items-center gap-3">
+                <span className="font-mono text-xs text-azure w-12 text-right tabular-nums">{bs.toFixed(1)}</span>
+                <div className="flex-1 flex flex-col gap-0.5">
+                  <div className="flex items-center justify-center gap-1">
+                    <span className="font-mono text-xs text-gold">{ROLE_SHORT[role]}</span>
+                    <span className={`font-mono text-xs ${diffColor}`}>±{diff.toFixed(1)}</span>
+                  </div>
+                  <div className="flex h-1.5 overflow-hidden">
+                    <div className="bg-azure transition-all duration-700" style={{ width: `${bp}%` }} />
+                    <div className="bg-crimson transition-all duration-700" style={{ width: `${100 - bp}%` }} />
+                  </div>
+                </div>
+                <span className="font-mono text-xs text-crimson w-12 tabular-nums">{rs.toFixed(1)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PlayersPage() {
   const [result, setResult] = useState<BalanceResult | null>(null);
   const { ref: contentRef, copy: copyImage, copying } = useCopyImage();
@@ -348,17 +460,7 @@ export default function PlayersPage() {
           </div>
         ) : (
           <>
-            {/* チームスコアサマリー */}
-            <div className="grid grid-cols-2 gap-px bg-wire mb-6">
-              <div className="bg-surface px-5 py-4 border-l-2 border-l-azure">
-                <p className="font-mono text-xs text-azure uppercase tracking-widest mb-1">Blue Team</p>
-                <p className="font-mono text-3xl font-bold text-azure">{result.blueScore}</p>
-              </div>
-              <div className="bg-surface px-5 py-4 border-l-2 border-l-crimson">
-                <p className="font-mono text-xs text-crimson uppercase tracking-widest mb-1">Red Team</p>
-                <p className="font-mono text-3xl font-bold text-crimson">{result.redScore}</p>
-              </div>
-            </div>
+            <TeamSummary result={result} matchups={matchups} />
 
             <div ref={contentRef}>
               {/* 列ヘッダー */}
