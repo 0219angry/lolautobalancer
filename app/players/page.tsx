@@ -43,35 +43,31 @@ function StatRow({
   blueVal,
   redVal,
   fmt = (v: number) => v.toFixed(1),
+  showBar = false,
 }: {
   label: string;
   blueVal: number;
   redVal: number;
   fmt?: (v: number) => string;
+  showBar?: boolean;
 }) {
   const { a, b } = cmp(blueVal, redVal);
-  const max = Math.max(blueVal, redVal, 0.01);
-  const bluePct = (blueVal / max) * 100;
-  const redPct = (redVal / max) * 100;
+  const total = blueVal + redVal;
+  const bluePct = total > 0 ? (blueVal / total) * 100 : 50;
+  const redPct = 100 - bluePct;
   return (
-    <div className="flex items-center gap-3 py-1">
-      {/* Blue側: 数値+バーが右寄せ */}
-      <div className="flex-1 flex flex-col items-end gap-0.5">
-        <span className={`font-mono text-sm ${a}`}>{fmt(blueVal)}</span>
-        <div className="w-full h-1 bg-raised flex justify-end">
-          <div className="h-full bg-azure transition-all duration-500" style={{ width: `${bluePct}%` }} />
-        </div>
+    <div className="flex items-center gap-3 py-1.5">
+      <span className={`font-mono text-sm w-20 text-right ${a}`}>{fmt(blueVal)}</span>
+      <div className="flex-1 flex flex-col gap-1">
+        <span className="font-mono text-xs text-ink-muted text-center">{label}</span>
+        {showBar && (
+          <div className="flex h-1.5">
+            <div className="bg-azure h-full transition-all duration-500" style={{ width: `${bluePct}%` }} />
+            <div className="bg-crimson h-full transition-all duration-500" style={{ width: `${redPct}%` }} />
+          </div>
+        )}
       </div>
-
-      <span className="font-mono text-xs text-ink-muted w-16 text-center flex-shrink-0">{label}</span>
-
-      {/* Red側: 数値+バーが左寄せ */}
-      <div className="flex-1 flex flex-col items-start gap-0.5">
-        <span className={`font-mono text-sm ${b}`}>{fmt(redVal)}</span>
-        <div className="w-full h-1 bg-raised">
-          <div className="h-full bg-crimson transition-all duration-500" style={{ width: `${redPct}%` }} />
-        </div>
-      </div>
+      <span className={`font-mono text-sm w-20 ${b}`}>{fmt(redVal)}</span>
     </div>
   );
 }
@@ -119,7 +115,7 @@ function LaneMatchup({ blue, red }: { blue: PlayerData; red: PlayerData }) {
 
       {/* スコア比較 */}
       <div className="px-4 py-3 border-t border-wire">
-        <StatRow label="Total Score" blueVal={bs.total} redVal={rs.total} />
+        <StatRow label="Total Score" blueVal={bs.total} redVal={rs.total} showBar />
         <StatRow label="Rank" blueVal={bs.rankComponent} redVal={rs.rankComponent} />
         <StatRow label="Role" blueVal={bs.roleComponent} redVal={rs.roleComponent} />
         <StatRow label="Contrib" blueVal={bs.contribComponent} redVal={rs.contribComponent} />
