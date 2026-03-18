@@ -65,7 +65,7 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
     // U+200B ZWSP, U+FEFF BOM など不可視/双方向制御文字をすべて除去
     const BIDI = /[\u2066-\u2069\u202a-\u202e\u200b\ufeff]/g;
     // # の前後に任意のスペースを許容し、名前・タグを別グループで捕捉
-    const RIOT_ID = /([^\s\[\]:#]+)\s*#\s*([A-Za-z0-9]{1,8})/;
+    const RIOT_ID = /([^\s\[\]:#][^\[\]:#]*?)\s*#\s*([A-Za-z0-9]{1,8})/;
     const joined = new Set<string>();
     const left = new Set<string>();
     const order: string[] = [];
