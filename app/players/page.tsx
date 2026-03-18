@@ -6,6 +6,7 @@ import type { BalanceResult, PlayerData, Role } from "@/types";
 import { calcRankScore, calcRoleScore, calcTotalScore } from "@/lib/score";
 import { useCopyImage } from "@/lib/useCopyImage";
 import { useToast } from "@/lib/useToast";
+import Footer from "@/components/Footer";
 
 const ALL_ROLES: Role[] = ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"];
 const MOOD_LABELS = ["疲れ気味", "普通", "好調", "絶好調"];
@@ -396,6 +397,8 @@ export default function PlayersPage() {
           </>
         )}
       </div>
+      <Footer />
+
       {toastMsg && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-surface border border-wire-bright text-ink px-5 py-3 text-sm font-mono z-50">
           {toastMsg}

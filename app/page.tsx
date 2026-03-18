@@ -7,6 +7,7 @@ import TeamResult from "@/components/TeamResult";
 import { fetchPlayerData } from "@/lib/fetchPlayer";
 import { useCopyImage } from "@/lib/useCopyImage";
 import { useToast } from "@/lib/useToast";
+import Footer from "@/components/Footer";
 
 const PLAYER_COUNT = 10;
 
@@ -363,6 +364,8 @@ const handleDataChange = useCallback((index: number, data: PlayerData | null) =>
           </section>
         )}
       </div>
+
+      <Footer />
 
       {/* トースト */}
       {toastMsg && (
