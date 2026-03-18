@@ -16,6 +16,7 @@ export function useCopyImage(): {
       const dataUrl = await toPng(ref.current, {
         cacheBust: true,
         backgroundColor: "#0f1218",
+        pixelRatio: 3,
         filter: (node) => !(node instanceof HTMLElement && "noCapture" in node.dataset),
       });
       const blob = await fetch(dataUrl).then((r) => r.blob());
