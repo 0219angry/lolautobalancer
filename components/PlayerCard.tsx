@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import type { PlayerInput, PlayerData, Mood, Role, Tier } from "@/types";
 import { fetchPlayerData } from "@/lib/fetchPlayer";
 import { getCacheAgeMin, getCachedIds } from "@/lib/playerCache";
@@ -36,7 +36,8 @@ interface Props {
 
 export default function PlayerCard({ index, onDataChange, preloadedData }: Props) {
   const [riotId, setRiotId] = useState("");
-  const cachedIds = useMemo(() => getCachedIds(), []);
+  const [cachedIds, setCachedIds] = useState<string[]>([]);
+  useEffect(() => { setCachedIds(getCachedIds()); }, []);
   const [mood, setMood] = useState<Mood>(1);
   const [preferredRoles, setPreferredRoles] = useState<(Role | null)[]>([null, null]);
   const [canPlayRoles, setCanPlayRoles] = useState<Role[]>([]);
