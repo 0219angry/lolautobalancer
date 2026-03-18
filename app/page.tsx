@@ -23,7 +23,22 @@ export default function Home() {
       const stored = localStorage.getItem("balancer_result");
       if (stored) setResult(JSON.parse(stored));
     } catch { /* ignore */ }
+    try {
+      const storedPlayers = localStorage.getItem("balancer_players");
+      if (storedPlayers) {
+        const parsed: (PlayerData | null)[] = JSON.parse(storedPlayers);
+        setPlayers(parsed);
+        setPreloadedPlayers(parsed);
+        setCardResetKey((k) => k + 1);
+      }
+    } catch { /* ignore */ }
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("balancer_players", JSON.stringify(players));
+    } catch { /* ignore */ }
+  }, [players]);
 
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
