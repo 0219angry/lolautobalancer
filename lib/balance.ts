@@ -48,10 +48,10 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
   for (const role of ALL_ROLES) {
     const group = roleGroups[role].sort((a, b) => b._score - a._score);
     if (group.length >= 2) {
-      const blueCount = blueTeam.length;
-      const redCount = redTeam.length;
-      // スコアが高い方を現在人数が少ないチームへ
-      if (blueCount <= redCount) {
+      // スコアが高い方を現在合計スコアが低いチームへ（人数ではなくスコアで判定）
+      const blueScore = blueTeam.reduce((s, p) => s + p._score, 0);
+      const redScore = redTeam.reduce((s, p) => s + p._score, 0);
+      if (blueScore <= redScore) {
         blueTeam.push({ ...group[0], assignedRole: role as Role });
         redTeam.push({ ...group[1], assignedRole: role as Role });
       } else {
@@ -80,15 +80,19 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
   }
 
   // Step 5: 最終調整（assignedRole が設定されていないプレイヤーのみ交換対象）
+  // スコア差が 5% 以内に収束するまで繰り返しスワップ
   let blueScore = blueTeam.reduce((s, p) => s + p._score, 0);
   let redScore = redTeam.reduce((s, p) => s + p._score, 0);
-  const scoreDiffThreshold = (blueScore + redScore) * 0.05; // 5%
+  const total = blueScore + redScore;
+  const scoreDiffThreshold = total * 0.05; // 5%
 
-  if (Math.abs(blueScore - redScore) > scoreDiffThreshold) {
+  const fixedRolePlayerIds = new Set(players.filter((p) => p.assignedRole).map((p) => p.id));
+
+  let improved = true;
+  while (improved && Math.abs(blueScore - redScore) > scoreDiffThreshold) {
+    improved = false;
     let bestDiff = Math.abs(blueScore - redScore);
     let bestSwap: [number, number] | null = null;
-
-    const fixedRolePlayerIds = new Set(players.filter((p) => p.assignedRole).map((p) => p.id));
 
     for (let bi = 0; bi < blueTeam.length; bi++) {
       for (let ri = 0; ri < redTeam.length; ri++) {
@@ -113,6 +117,7 @@ export function balanceTeams(players: PlayerData[]): BalanceResult {
       redTeam[ri] = tmp;
       blueScore = blueTeam.reduce((s, p) => s + p._score, 0);
       redScore = redTeam.reduce((s, p) => s + p._score, 0);
+      improved = true;
     }
   }
 
