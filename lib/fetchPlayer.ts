@@ -59,7 +59,7 @@ export async function fetchPlayerData(riotId: string, index: number, skipCache =
   try {
     const matchRes = await fetch(
       `/api/matches?puuid=${encodeURIComponent(sumData.puuid)}`,
-      { signal: AbortSignal.timeout(45000) } // 20試合取得に対応して延長
+      { signal: AbortSignal.timeout(20000) } // 5試合取得（Personal API上限対応）
     );
     if (matchRes.ok) {
       const matchData = await matchRes.json();

@@ -125,7 +125,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
 // マッチ履歴からロール別スタッツと貢献度を算出
 export async function analyzeMatches(
   puuid: string,
-  count = 10
+  count = 5
 ): Promise<{
   roleStats: RoleStats;
   preferredRoles: string[];
