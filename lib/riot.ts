@@ -90,7 +90,7 @@ export async function getRankByPuuid(
 
 // PUUID → 直近マッチIDリスト取得
 // ソロランク(420)を優先し、不足分はフレックス(440)で補完する
-export async function getMatchIds(puuid: string, count = 10): Promise<string[]> {
+export async function getMatchIds(puuid: string, count = 5): Promise<string[]> {
   const base = `${ASIA_HOST}/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=0&count=${count}`;
 
   const soloRes = await riotFetch(`${base}&queue=420`);

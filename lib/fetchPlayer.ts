@@ -55,10 +55,12 @@ export async function fetchPlayerData(riotId: string, index: number, skipCache =
   let preferredRoles: Role[] = [];
   let contributionScore = { visionScore: 0, teamFightParticipation: 0, controlWardsBought: 0, raw: 50 };
 
+  const MATCHES_API_TIMEOUT_MS = 20000; // 5試合取得（Personal API上限対応）
+
   try {
     const matchRes = await fetch(
       `/api/matches?puuid=${encodeURIComponent(sumData.puuid)}`,
-      { signal: AbortSignal.timeout(20000) } // 5試合取得（Personal API上限対応）
+      { signal: AbortSignal.timeout(MATCHES_API_TIMEOUT_MS) }
     );
     if (matchRes.ok) {
       const matchData = await matchRes.json();
